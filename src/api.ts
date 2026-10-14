@@ -107,6 +107,8 @@ export function errorText(err: unknown): string {
 		case "ai_failed":
 		case "ai_unavailable":
 			return "回答を作れませんでした。少し時間をおいてから、もう一度送ってください。";
+		case "busy":
+			return "いま哲学者たちが答えているところです。終わってから、もう一度押してください。";
 		case "not_found":
 			return "見つかりませんでした。消されたか、共有をやめた相談かもしれません。";
 		case "network":

@@ -2,8 +2,10 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { ConsultationView, StreamEvent } from "../shared/api";
-import { ANSWER_COUNT, MORE_COUNT } from "../shared/site";
+import { ANSWER_COUNT, BODY_MAX, MORE_COUNT, MY_ANSWER_MAX, NAME_MAX } from "../shared/site";
+import { MORE_LOCK_MS } from "../worker/db/consultations";
 import app from "../worker/index";
+import { hashKey } from "../worker/owner";
 
 async function consultAs(body: string, cookie?: string): Promise<{ id: string; cookie: string }> {
 	const ctx = createExecutionContext();
@@ -108,6 +110,17 @@ describe("相談のページの API", () => {
 		expect((await call("PATCH", `/api/consultations/${id}`, { cookie, body: { myAnswer: "あ".repeat(201) } })).status).toBe(400);
 	});
 
+	it("直す文字の字数は文字（コードポイント）で数える。絵文字だけでも上限ちょうどは通り、1字超えたら 400", async () => {
+		const { id, cookie } = await consultAs("絵文字で字数を数える");
+		const patch = (body: Record<string, string>) => call("PATCH", `/api/consultations/${id}`, { cookie, body });
+		expect((await patch({ myAnswer: "😀".repeat(MY_ANSWER_MAX) })).status).toBe(200);
+		expect((await patch({ myAnswer: "😀".repeat(MY_ANSWER_MAX + 1) })).status).toBe(400);
+		expect((await patch({ displayName: "😀".repeat(NAME_MAX) })).status).toBe(200);
+		expect((await patch({ displayName: "😀".repeat(NAME_MAX + 1) })).status).toBe(400);
+		expect((await patch({ body: "😀".repeat(BODY_MAX) })).status).toBe(200);
+		expect((await patch({ body: "😀".repeat(BODY_MAX + 1) })).status).toBe(400);
+	});
+
 	it("ほかの哲学者にも聞くと2人増え、前の人と重ならない", async () => {
 		const { id, cookie } = await consultAs("もっと聞きたい");
 		const ctx = createExecutionContext();
@@ -121,6 +134,99 @@ describe("相談のページの API", () => {
 		const view = (await (await call("GET", `/api/consultations/${id}`, { cookie })).json()) as ConsultationView;
 		expect(view.answers).toHaveLength(ANSWER_COUNT + MORE_COUNT);
 		expect(new Set(view.answers.map((a) => a.philosopher)).size).toBe(ANSWER_COUNT + MORE_COUNT);
+	});
+
+	describe("ぬぬはらの欄が無い相談", () => {
+		/** 共有中の相談を直接作る（ぬぬはらの欄は withNunu のときだけ） */
+		async function seed(id: string, withNunu: boolean) {
+			const key = "n".repeat(43);
+			await env.DB.prepare("INSERT OR IGNORE INTO owners (id, key_hash, created_at) VALUES ('nunu-owner', ?, 1)").bind(await hashKey(key)).run();
+			await env.DB.prepare("INSERT INTO consultations (id, owner_id, body, created_at, shared_at, status) VALUES (?, 'nunu-owner', 'ぬぬはらの欄の有無', 1, 1, 'done')")
+				.bind(id)
+				.run();
+			await env.DB.prepare("INSERT INTO answers (consultation_id, philosopher_id, slot, conclusion, body) VALUES (?, 'socrates', 0, 'c', 'b')").bind(id).run();
+			if (withNunu) await env.DB.prepare("INSERT INTO nunu_answers (consultation_id, body, related) VALUES (?, 'b', '[]')").bind(id).run();
+			return `owner=${key}`;
+		}
+
+		it("相談者の「刺さった」にぬぬはらは選べない。哲学者は選べる", async () => {
+			const cookie = await seed("no-nunu-pick", false);
+			expect((await call("PATCH", "/api/consultations/no-nunu-pick", { cookie, body: { myPicks: ["socrates", "nunu"] } })).status).toBe(400);
+			expect((await call("PATCH", "/api/consultations/no-nunu-pick", { cookie, body: { myPicks: ["socrates"] } })).status).toBe(200);
+		});
+
+		it("見た人の「刺さった」にもぬぬはらは押せない", async () => {
+			await seed("no-nunu-heart", false);
+			const heart = (philosopherId: string) => call("POST", "/api/consultations/no-nunu-heart/hearts", { body: { philosopherId }, ip: "203.0.113.20" });
+			expect((await heart("nunu")).status).toBe(400);
+			expect((await heart("socrates")).status).toBe(200);
+		});
+
+		it("欄があれば、どちらもぬぬはらを選べる", async () => {
+			const cookie = await seed("with-nunu", true);
+			expect((await call("PATCH", "/api/consultations/with-nunu", { cookie, body: { myPicks: ["nunu"] } })).status).toBe(200);
+			expect((await call("POST", "/api/consultations/with-nunu/hearts", { body: { philosopherId: "nunu" }, ip: "203.0.113.21" })).status).toBe(200);
+		});
+	});
+
+	describe("ほかの哲学者にも聞く: 同時に2回", () => {
+		const more = (id: string, cookie: string, extra: Record<string, string> = {}) => {
+			const ctx = createExecutionContext();
+			return { res: app.request(`/api/consultations/${id}/more`, { method: "POST", headers: { Cookie: cookie } }, { ...env, ...extra }, ctx), ctx };
+		};
+		const answerCount = async (id: string) => (await env.DB.prepare("SELECT COUNT(*) AS n FROM answers WHERE consultation_id = ?").bind(id).first<{ n: number }>())?.n;
+		const lockOf = async (id: string) => (await env.DB.prepare("SELECT more_started_at AS t FROM consultations WHERE id = ?").bind(id).first<{ t: number | null }>())?.t;
+
+		it("同時に2回送っても1回だけ通り、もう1回は 409 で断る（人数が重ならず増えすぎない）", async () => {
+			const { id, cookie } = await consultAs("二重に押される");
+			const a = more(id, cookie);
+			const b = more(id, cookie);
+			const [ra, rb] = await Promise.all([a.res, b.res]);
+			const [ta, tb] = await Promise.all([ra.text(), rb.text()]);
+			await Promise.all([waitOnExecutionContext(a.ctx), waitOnExecutionContext(b.ctx)]);
+			expect([ra.status, rb.status].sort()).toEqual([200, 409]);
+			expect(JSON.parse(ra.status === 409 ? ta : tb)).toEqual({ error: "busy" });
+			expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT);
+			expect(await lockOf(id)).toBeNull();
+		});
+
+		it("書いている途中の印が付いていれば 409。何も書き足さない", async () => {
+			const { id, cookie } = await consultAs("書いている途中");
+			await env.DB.prepare("UPDATE consultations SET more_started_at = ? WHERE id = ?").bind(Date.now(), id).run();
+			const { res } = more(id, cookie);
+			const r = await res;
+			expect(r.status).toBe(409);
+			expect(await r.json()).toEqual({ error: "busy" });
+			expect(await answerCount(id)).toBe(ANSWER_COUNT);
+		});
+
+		it("途中で落ちて印が残っても、時間がたてば聞ける", async () => {
+			const { id, cookie } = await consultAs("印が残った");
+			await env.DB.prepare("UPDATE consultations SET more_started_at = ? WHERE id = ?").bind(Date.now() - MORE_LOCK_MS - 1000, id).run();
+			const { res, ctx } = more(id, cookie);
+			const r = await res;
+			await r.text();
+			await waitOnExecutionContext(ctx);
+			expect(r.status).toBe(200);
+			expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT);
+			expect(await lockOf(id)).toBeNull();
+		});
+
+		it("終われば印を外すので続けて聞ける。AI が失敗したときも外す", async () => {
+			const { id, cookie } = await consultAs("続けて聞く");
+			for (const n of [1, 2]) {
+				const { res, ctx } = more(id, cookie);
+				await (await res).text();
+				await waitOnExecutionContext(ctx);
+				expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT * n);
+			}
+			const failing = more(id, cookie, { AI_FAKE: "fail" });
+			const events = (await (await failing.res).text()).split("\n").filter(Boolean);
+			await waitOnExecutionContext(failing.ctx);
+			expect(JSON.parse(events.at(-1) ?? "{}")).toEqual({ type: "error", code: "ai_failed" });
+			expect(await lockOf(id)).toBeNull();
+			expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT * 2);
+		});
 	});
 
 	it("この端末の相談の一覧", async () => {

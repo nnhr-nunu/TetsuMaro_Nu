@@ -50,6 +50,11 @@ describe("管理", () => {
 	it("合言葉が無いと 404、違う合言葉は 401", async () => {
 		expect((await app.request("/api/admin/reports", {}, env)).status).toBe(404);
 		expect((await app.request("/api/admin/reports", { headers: { Authorization: "Bearer wrong" } }, ADMIN)).status).toBe(401);
+		// ヘッダーが無い・合言葉の一部だけ・合言葉のあとに余計なものがある、も 401
+		expect((await app.request("/api/admin/reports", {}, ADMIN)).status).toBe(401);
+		expect((await app.request("/api/admin/reports", { headers: { Authorization: "Bearer secret-toke" } }, ADMIN)).status).toBe(401);
+		expect((await app.request("/api/admin/reports", { headers: { Authorization: "Bearer secret-token2" } }, ADMIN)).status).toBe(401);
+		expect((await app.request("/api/admin/reports", { headers: { Authorization: "Bearer secret-token" } }, ADMIN)).status).toBe(200);
 	});
 
 	it("通報の一覧を見て、隠した相談を戻し、分類を直せる", async () => {

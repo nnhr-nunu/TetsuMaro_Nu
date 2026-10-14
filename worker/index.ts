@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { crawl } from "./crawl";
 import type { AppEnv } from "./env";
 import { rateLimit } from "./limits";
+import { sameOriginWrites } from "./origin";
 import { pages } from "./pages";
 import { admin } from "./routes/admin";
 import { consult } from "./routes/consult";
@@ -19,6 +20,7 @@ app.use("/api/*", async (c, next) => {
 	if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
 	c.header("X-Robots-Tag", "noindex");
 });
+app.use("/api/*", sameOriginWrites);
 app.use("/api/*", rateLimit);
 
 app.get("/api/health", (c) => c.json({ ok: true }));

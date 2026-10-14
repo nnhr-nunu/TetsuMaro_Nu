@@ -30,7 +30,9 @@ export type ErrorCode =
 	| "ai_daily_limit"
 	| "ai_unavailable"
 	| "ai_failed"
-	| "not_found";
+	| "not_found"
+	/** ほかの哲学者にも聞くを、同時にもう1回頼まれた（409） */
+	| "busy";
 
 export type StreamEvent =
 	| { type: "start"; id: string }

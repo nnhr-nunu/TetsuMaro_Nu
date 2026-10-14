@@ -34,7 +34,8 @@ consult.post("/", async (c) => {
 	if (!input) return c.json({ error: "bad_request" satisfies ErrorCode }, 400);
 	const text = input.body.trim();
 	if (!text) return c.json({ error: "empty" satisfies ErrorCode }, 400);
-	if (text.length > BODY_MAX) return c.json({ error: "too_long" satisfies ErrorCode }, 400);
+	// 字数は画面と同じ数え方（文字＝コードポイント）。.length は UTF-16 で絵文字を2字に数える。UTF-16 の長さが2倍を超えたものは数えるまでもなく長すぎる
+	if (text.length > BODY_MAX * 2 || [...text].length > BODY_MAX) return c.json({ error: "too_long" satisfies ErrorCode }, 400);
 
 	const blocked = (await requireTurnstile(c, input.turnstile, "consult")) ?? (await limitConsult(c));
 	if (blocked) return blocked;
@@ -73,6 +74,8 @@ export function streamAnswers(
 		exclude: string[];
 		related: string[];
 		nunuExamples: Parameters<typeof buildConsultPrompt>[0]["nunuExamples"];
+		/** 書き終えたとき（成功も失敗も）に呼ぶ。終わりの印（done・error）を流す前に呼ぶので、画面が続けて頼んでも断られない */
+		onEnd?: () => Promise<void>;
 	},
 ): Response {
 	const first = opts.exclude.length === 0;
@@ -86,6 +89,7 @@ export function streamAnswers(
 	};
 	const db = c.env.DB;
 	const env = c.env;
+	const end = () => opts.onEnd?.().catch((err) => console.error("書き終えた後始末に失敗しました", err));
 
 	const work = (async () => {
 		send({ type: "start", id: opts.id });
@@ -140,6 +144,7 @@ export function streamAnswers(
 			console.log(JSON.stringify({ event: "gemini_usage", model, ...run.usage(), answered: state.answered.length, more: !first }));
 		}
 
+		await end();
 		if (state.answered.length === 0) {
 			if (first) await deleteConsultation(db, opts.id);
 			send({ type: "error", code: error ?? "ai_failed" });
@@ -151,6 +156,7 @@ export function streamAnswers(
 		await writer.close().catch(() => {});
 	})().catch(async (err) => {
 		console.error("相談の保存に失敗しました", err);
+		await end();
 		send({ type: "error", code: "ai_failed" });
 		await writer.close().catch(() => {});
 	});

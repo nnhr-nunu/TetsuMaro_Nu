@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { ConsultationView, ErrorCode } from "../../shared/api";
 import { philosopherById } from "../../shared/philosophers";
 import { ANSWER_COUNT, BODY_MAX, MORE_COUNT, MY_ANSWER_MAX, NAME_MAX } from "../../shared/site";
-import { type Loaded, deleteConsultation, loadConsultation, parseList, settleStale } from "../db/consultations";
+import { type Loaded, deleteConsultation, loadConsultation, parseList, releaseMore, settleStale, takeMore } from "../db/consultations";
 import { addHeart, heartCounts } from "../db/hearts";
 import { indexShared, unindexShared } from "../db/shared";
 import type { AppEnv } from "../env";
@@ -24,6 +24,9 @@ const notFound = (c: Context<AppEnv>) => c.json({ error: "not_found" satisfies E
 const badRequest = (c: Context<AppEnv>) => c.json({ error: "bad_request" satisfies ErrorCode }, 400);
 
 const isPublic = (l: Loaded) => l.row.shared_at !== null && l.row.hidden_at === null;
+
+/** 「刺さった」に選べる id。答えた哲学者と、ぬぬはらの欄があるときだけぬぬはら */
+const pickable = (l: Loaded) => new Set([...l.answers.map((a) => a.philosopher), ...(l.nunu ? [NUNU_PICK] : [])]);
 
 function toView(l: Loaded, isOwner: boolean, hearts: Record<string, number>): ConsultationView {
 	const r = l.row;
@@ -100,8 +103,8 @@ consultations.patch("/:id", async (c) => {
 		values.push(input.displayName?.trim() || null);
 	}
 	if (input.myPicks !== undefined) {
-		const answered = new Set([...loaded.answers.map((a) => a.philosopher), NUNU_PICK]);
-		if (!input.myPicks.every((p) => answered.has(p))) return badRequest(c);
+		const choices = pickable(loaded);
+		if (!input.myPicks.every((p) => choices.has(p))) return badRequest(c);
 		sets.push("my_picks = ?");
 		values.push(JSON.stringify([...new Set(input.myPicks)]));
 	}
@@ -143,8 +146,7 @@ consultations.post("/:id/hearts", async (c) => {
 	const loaded = await loadConsultation(c.env.DB, c.req.param("id"));
 	if (!loaded || !isPublic(loaded)) return notFound(c);
 	const input = await readBody(c, heartSchema);
-	const answered = new Set([...loaded.answers.map((a) => a.philosopher), NUNU_PICK]);
-	if (!input || !answered.has(input.philosopherId)) return badRequest(c);
+	if (!input || !pickable(loaded).has(input.philosopherId)) return badRequest(c);
 	const voter = await networkHash(c.env.REPORTER_KEY, c.req.header("cf-connecting-ip") ?? "local", `heart:${loaded.row.id}`);
 	return c.json({ count: await addHeart(c.env.DB, loaded.row.id, input.philosopherId, voter, Date.now()) });
 });
@@ -156,6 +158,9 @@ consultations.post("/:id/more", async (c) => {
 	if (loaded.row.status === "pending" || exclude.length === 0 || exclude.length >= MAX_ANSWERS) return badRequest(c);
 	const limited = await limitConsult(c);
 	if (limited) return limited;
+	// 同時に2回押されても1回だけ通す（slot が重なって、人数の上限を超えないように）。印は書き終えたら外す
+	const startedAt = Date.now();
+	if (!(await takeMore(c.env.DB, loaded.row.id, loaded.answers.length, startedAt))) return c.json({ error: "busy" satisfies ErrorCode }, 409);
 	return streamAnswers(c, {
 		id: loaded.row.id,
 		body: loaded.row.body,
@@ -164,5 +169,6 @@ consultations.post("/:id/more", async (c) => {
 		exclude,
 		related: [],
 		nunuExamples: [],
+		onEnd: () => releaseMore(c.env.DB, loaded.row.id, startedAt),
 	});
 });

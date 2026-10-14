@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { StreamEvent } from "../shared/api";
 import { ANSWER_COUNT, DAILY_PER_OWNER } from "../shared/site";
-import { loadConsultation } from "../worker/db/consultations";
+import { deleteConsultation, insertAnswer, insertConsultation, loadConsultation, saveNunu } from "../worker/db/consultations";
 import type { AppEnv } from "../worker/env";
 import app from "../worker/index";
 
@@ -57,6 +57,17 @@ describe("POST /api/consult", () => {
 		expect(empty.status).toBe(400);
 		expect(await empty.json()).toEqual({ error: "empty" });
 		const long = await post({ body: "あ".repeat(1001) }).res;
+		expect(long.status).toBe(400);
+		expect(await long.json()).toEqual({ error: "too_long" });
+	});
+
+	it("字数は文字（コードポイント）で数える。絵文字だけの1000字は通り、1001字は 400 too_long", async () => {
+		const ok = post({ body: "😀".repeat(1000) });
+		const r = await ok.res;
+		expect(r.status).toBe(200);
+		await r.text();
+		await waitOnExecutionContext(ok.ctx);
+		const long = await post({ body: "😀".repeat(1001) }).res;
 		expect(long.status).toBe(400);
 		expect(await long.json()).toEqual({ error: "too_long" });
 	});
@@ -127,5 +138,30 @@ describe("POST /api/consult", () => {
 		expect(saved?.row.gender).toBe("female");
 		const bad = await post({ body: "変な年代", ageBand: "200s" }).res;
 		expect(bad.status).toBe(400);
+	});
+});
+
+describe("書いている途中で消された相談", () => {
+	it("消えたあとに届いた回答・ぬぬはらの欄は保存しない（持ち主のいない行を残さない）", async () => {
+		const id = "deleted-while-writing";
+		await insertConsultation(env.DB, { id, ownerId: "o", mode: "general", body: "書いている途中で消される", crisis: false, now: Date.now() });
+		await insertAnswer(env.DB, id, 0, { type: "answer", philosopher: "socrates", conclusion: "c", body: "b", concepts: [], quote: null });
+		await deleteConsultation(env.DB, id);
+
+		await insertAnswer(env.DB, id, 1, { type: "answer", philosopher: "plato", conclusion: "c", body: "b", concepts: [], quote: null });
+		await saveNunu(env.DB, id, { type: "nunu", body: "ぬぬはら", related: [] });
+		const count = (table: string) => env.DB.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE consultation_id = ?`).bind(id).first<{ n: number }>();
+		expect((await count("answers"))?.n).toBe(0);
+		expect((await count("nunu_answers"))?.n).toBe(0);
+	});
+
+	it("相談があるうちは、これまでどおり保存する", async () => {
+		const id = "still-writing";
+		await insertConsultation(env.DB, { id, ownerId: "o", mode: "general", body: "書いている途中", crisis: false, now: Date.now() });
+		await insertAnswer(env.DB, id, 0, { type: "answer", philosopher: "socrates", conclusion: "c", body: "b", concepts: ["x"], quote: "q" });
+		await saveNunu(env.DB, id, { type: "nunu", body: "ぬぬはら", related: ["a"] });
+		const saved = await loadConsultation(env.DB, id);
+		expect(saved?.answers).toEqual([{ type: "answer", philosopher: "socrates", conclusion: "c", body: "b", concepts: ["x"], quote: "q" }]);
+		expect(saved?.nunu).toEqual({ type: "nunu", body: "ぬぬはら", related: ["a"] });
 	});
 });
