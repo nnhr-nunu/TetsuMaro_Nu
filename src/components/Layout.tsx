@@ -20,7 +20,7 @@ const nav = ({ isActive }: { isActive: boolean }) =>
 
 export function Layout({ children }: { children: ReactNode }) {
 	return (
-		<div className="flex min-h-dvh flex-col">
+		<div className="flex min-h-dvh flex-col overflow-x-clip">
 			<header className="sticky top-0 z-30 border-b border-line/70 bg-paper/90 backdrop-blur">
 				<div className="mx-auto flex max-w-3xl flex-col gap-1 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
 					<Link to="/" className="flex items-center gap-2 font-bold whitespace-nowrap">

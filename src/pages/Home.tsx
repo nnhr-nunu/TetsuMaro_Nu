@@ -23,7 +23,15 @@ export function HomePage() {
 
 	return (
 		<div className="space-y-12">
-			<section className="space-y-6 pt-2">
+			<section className="relative isolate space-y-6 pt-2">
+				{/* 飾り: 絵と同じ、大きな円とポリゴンの宝石。文字の後ろに置く */}
+				<svg viewBox="0 0 200 200" className="pointer-events-none absolute -top-6 -right-4 -z-10 h-52 w-52 sm:h-72 sm:w-72" aria-hidden="true">
+					<circle cx="120" cy="80" r="78" fill="#f6ead2" />
+					<circle cx="60" cy="130" r="46" fill="none" stroke="#c9cff7" strokeWidth="2" />
+					<polygon points="150,150 170,140 176,164" fill="#3b4fe0" />
+					<polygon points="150,150 176,164 156,176" fill="#6b7bf5" />
+					<polygon points="170,140 188,152 176,164" fill="#26339e" />
+				</svg>
 				<div className="flex -space-x-3" aria-hidden="true">
 					{HERO.map((id, i) => (
 						<span key={id} className="rounded-full ring-4 ring-paper" style={{ zIndex: HERO.length - i }}>
