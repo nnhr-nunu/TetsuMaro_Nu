@@ -1,7 +1,7 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	// Cloudflare のダッシュボードのワーカー名と同じにする（違うと Workers Builds が失敗する）
-	"name": "tetsumaro",
+	"name": "tetsumaro-nu",
 	"compatibility_date": "2026-10-13",
 	"main": "./worker/index.ts",
 	"workers_dev": true,
@@ -28,8 +28,7 @@
 		{
 			"binding": "DB",
 			"database_name": "tetsumaro",
-			// Cloudflare で D1 を作ったら差し替える（task.md の「ぬぬはらの操作が要るもの」）
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "6db33e03-5e5a-4241-a7ee-5082361f40a8",
 			"migrations_dir": "migrations"
 		}
 	]

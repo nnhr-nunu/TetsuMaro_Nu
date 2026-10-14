@@ -12,10 +12,10 @@ export const SITE_DESCRIPTION =
 export const SITE_URL = "https://tetsumaro.oshilog.life";
 
 /**
- * Turnstile のサイトキー（公開してよい値）。本物のウィジェットを作るまでは、Cloudflare のテスト用（いつも通る）の値。
+ * Turnstile のサイトキー（公開してよい値。アカウント nnhr のウィジェット「tetsumaro.oshilog.life」）。
  * 対になるシークレットは Worker のシークレット TURNSTILE_SECRET_KEY に入れる（入っていなければ確かめない）
  */
-export const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
+export const TURNSTILE_SITE_KEY = "0x4AAAAAAFWW-3T42SoYEFtU";
 
 /** 相談は1000字まで。自分の答えは200字、公開名は20字まで */
 export const BODY_MAX = 1000;

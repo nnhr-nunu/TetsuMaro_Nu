@@ -3,7 +3,7 @@ import { SITE_URL, TURNSTILE_SITE_KEY } from "../shared/site";
 import type { AppEnv } from "./env";
 
 /** workers.dev のアドレス（独自ドメインと並べて動かす。アカウント nnhr のサブドメイン） */
-const WORKERS_DEV_HOST = "tetsumaro.nnhr.workers.dev";
+const WORKERS_DEV_HOST = "tetsumaro-nu.nnhr.workers.dev";
 
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
