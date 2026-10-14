@@ -53,17 +53,21 @@ export async function applyMeta(db: D1Database, id: string, meta: MetaEvent): Pr
 		.run();
 }
 
+/** 回答を入れる。書いている途中で相談が消されていたら入れない（WHERE EXISTS。持ち主のいない行を残さない） */
 export async function insertAnswer(db: D1Database, id: string, slot: number, a: AnswerEvent): Promise<void> {
 	await db
-		.prepare("INSERT OR IGNORE INTO answers (consultation_id, philosopher_id, slot, conclusion, body, concepts, quote_id) VALUES (?, ?, ?, ?, ?, ?, ?)")
-		.bind(id, a.philosopher, slot, a.conclusion, a.body, JSON.stringify(a.concepts), a.quote)
+		.prepare(
+			"INSERT OR IGNORE INTO answers (consultation_id, philosopher_id, slot, conclusion, body, concepts, quote_id) SELECT ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM consultations WHERE id = ?)",
+		)
+		.bind(id, a.philosopher, slot, a.conclusion, a.body, JSON.stringify(a.concepts), a.quote, id)
 		.run();
 }
 
+/** ぬぬはらの欄を入れる。相談が消されていたら入れない */
 export async function saveNunu(db: D1Database, id: string, nunu: NunuEvent): Promise<void> {
 	await db
-		.prepare("INSERT OR REPLACE INTO nunu_answers (consultation_id, body, related) VALUES (?, ?, ?)")
-		.bind(id, nunu.body, JSON.stringify(nunu.related))
+		.prepare("INSERT OR REPLACE INTO nunu_answers (consultation_id, body, related) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM consultations WHERE id = ?)")
+		.bind(id, nunu.body, JSON.stringify(nunu.related), id)
 		.run();
 }
 
