@@ -8,6 +8,10 @@ describe("哲学者の名簿", () => {
 		expect(new Set(ROSTER_IDS).size).toBe(38);
 	});
 
+	it("名簿の38人が全員そろっている", () => {
+		expect(PHILOSOPHERS.map((p) => p.id)).toEqual([...ROSTER_IDS]);
+	});
+
 	it("書いてある人は名簿の順に並ぶ", () => {
 		const order = PHILOSOPHERS.map((p) => ROSTER_IDS.indexOf(p.id));
 		expect(order.every((i) => i >= 0)).toBe(true);
