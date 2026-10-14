@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+<rect width="200" height="220" fill="#E2E8ED"/>
+<circle cx="100" cy="100" r="78" fill="#F0F4F6"/>
+<polygon points="30,220 46,162 100,148 98,220" fill="#A3A29E"/>
+<polygon points="98,220 100,148 154,162 170,220" fill="#868581"/>
+<polygon points="46,162 74,151 126,220 98,220" fill="#B3B2AD"/>
+<polygon points="74,151 84,149 134,220 126,220" fill="#94938F"/>
+<polygon points="56,178 76,174 78,194 58,198" fill="#6C8EA4"/>
+<polygon points="66,176 76,174 78,194 68,196" fill="#5A7C92"/>
+<polygon points="88,132 112,132 110,148 90,148" fill="#E4B08A"/>
+<polygon points="72,78 84,60 100,58 100,128 76,112" fill="#F6CFAE"/>
+<polygon points="100,58 116,60 128,78 124,112 100,128" fill="#E8B48E"/>
+<polygon points="68,88 66,64 78,48 100,42 100,56 86,61 78,70 74,90" fill="#4E4A47"/>
+<polygon points="100,42 122,48 134,64 132,88 126,90 122,70 114,61 100,56" fill="#3B3836"/>
+<polygon points="80,52 100,46 98,52 84,56" fill="#5F5A56"/>
+<polygon points="72,98 84,110 100,113 100,140 86,134 76,120" fill="#5F5A56"/>
+<polygon points="100,113 116,110 128,98 124,120 114,134 100,140" fill="#4A4643"/>
+<polygon points="86,107 100,102 114,107 110,112 100,109 90,112" fill="#55504C"/>
+<polygon points="78,85 94,84 94,88 78,89" fill="#3B3836"/>
+<polygon points="106,84 122,85 122,89 106,88" fill="#3B3836"/>
+<rect x="84" y="93" width="7" height="3" rx="1" fill="#2E2A3D"/>
+<rect x="109" y="93" width="7" height="3" rx="1" fill="#2E2A3D"/>
+<polygon points="100,92 106,103 98,105" fill="#D99E78"/>
+<polygon points="148,220 147,64 153,64 154,220" fill="#9C7650"/>
+<polygon points="151,220 151,64 153,64 154,220" fill="#7E5D3D"/>
+<polygon points="145,66 148,58 154,58 157,66 153,70 147,70" fill="#8A6745"/>
+<polygon points="118,194 136,160 150,166 132,204" fill="#959490"/>
+<polygon points="132,204 150,166 156,172 140,206" fill="#7A7975"/>
+<polygon points="140,150 156,146 160,152 160,168 144,170 138,162" fill="#F2C6A2"/>
+<polygon points="152,146 160,152 160,168 152,169" fill="#E8B48E"/>
+</svg>
