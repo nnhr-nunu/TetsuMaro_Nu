@@ -1,4 +1,10 @@
 import { aristotle } from "./data/aristotle";
+import { alain } from "./data/alain";
+import { arendt } from "./data/arendt";
+import { beauvoir } from "./data/beauvoir";
+import { camus } from "./data/camus";
+import { russell } from "./data/russell";
+import { sartre } from "./data/sartre";
 import { buddha } from "./data/buddha";
 import { kant } from "./data/kant";
 import { kierkegaard } from "./data/kierkegaard";
@@ -33,7 +39,7 @@ export const ROSTER_IDS: readonly string[] = [
 	"carnegie",
 ];
 
-const ALL: Philosopher[] = [socrates, plato, aristotle, epicurus, seneca, epictetus, marcusAurelius, buddha, confucius, laozi, zhuangzi, wangYangming, montaigne, pascal, spinoza, kant, schopenhauer, mill, kierkegaard, nietzsche];
+const ALL: Philosopher[] = [socrates, plato, aristotle, epicurus, seneca, epictetus, marcusAurelius, buddha, confucius, laozi, zhuangzi, wangYangming, montaigne, pascal, spinoza, kant, schopenhauer, mill, kierkegaard, nietzsche, alain, russell, sartre, beauvoir, camus, arendt];
 
 export const PHILOSOPHERS: readonly Philosopher[] = [...ALL].sort(
 	(a, b) => ROSTER_IDS.indexOf(a.id) - ROSTER_IDS.indexOf(b.id),
