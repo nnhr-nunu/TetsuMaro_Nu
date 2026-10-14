@@ -14,6 +14,9 @@ export type AiRun = {
 	real: boolean;
 };
 
+/** 本物の Gemini を使うか（キーがあって、AI_FAKE が空） */
+export const usesRealAi = (env: AppEnv["Bindings"]): boolean => Boolean(env.GEMINI_API_KEY) && !env.AI_FAKE;
+
 /**
  * 相談の回答を作る。キーが無いとき・AI_FAKE が入っているときは偽の AI（worker/fakeAi.ts）。
  * テストは AI_FAKE に "stop:3" などを入れて、途中で切れたときや上限のときを試す
@@ -23,7 +26,7 @@ export function aiStream(
 	prompt: { system: string; user: string },
 	opts: { count: number; exclude: readonly string[]; mode: Mode; body: string; signal?: AbortSignal },
 ): AiRun {
-	if (!env.GEMINI_API_KEY || env.AI_FAKE) {
+	if (!usesRealAi(env) || !env.GEMINI_API_KEY) {
 		return { text: fakeAiStream({ ...opts, behavior: env.AI_FAKE || "1" }), model: () => "fake", usage: () => null, real: false };
 	}
 	let used: string | null = null;

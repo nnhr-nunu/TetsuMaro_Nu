@@ -103,7 +103,7 @@ export function errorText(err: unknown): string {
 		case "turnstile":
 			return "ロボットでないことを確かめられませんでした。もう一度送ってください。";
 		case "ai_daily_limit":
-			return "今日の相談の受付は終わりました（無料で動かしているため、1日に答えられる数に限りがあります）。書いた相談はこの端末に残っているので、明日そのまま送れます。";
+			return "今日の相談の受付は終わりました（1日に答えられる数に限りがあります）。書いた相談はこの端末に残っているので、明日そのまま送れます。";
 		case "ai_failed":
 		case "ai_unavailable":
 			return "回答を作れませんでした。少し時間をおいてから、もう一度送ってください。";

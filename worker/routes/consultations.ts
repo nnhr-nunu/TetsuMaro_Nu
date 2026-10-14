@@ -2,7 +2,7 @@ import { type Context, Hono } from "hono";
 import { z } from "zod";
 import type { ConsultationView, ErrorCode } from "../../shared/api";
 import { philosopherById } from "../../shared/philosophers";
-import { ANSWER_COUNT, BODY_MAX, MORE_COUNT, MY_ANSWER_MAX, NAME_MAX } from "../../shared/site";
+import { ANSWER_COUNT, BODY_MAX, CURATED_OWNER, MORE_COUNT, MY_ANSWER_MAX, NAME_MAX } from "../../shared/site";
 import { type Loaded, deleteConsultation, loadConsultation, parseList, releaseMore, settleStale, takeMore } from "../db/consultations";
 import { addHeart, heartCounts } from "../db/hearts";
 import { indexShared, unindexShared } from "../db/shared";
@@ -11,7 +11,7 @@ import { readBody } from "../http";
 import { networkHash } from "../ipHash";
 import { limitConsult } from "../limits";
 import { ownerOf } from "../owner";
-import { streamAnswers } from "./consult";
+import { aiCapped, streamAnswers } from "./consult";
 
 export const consultations = new Hono<AppEnv>();
 
@@ -40,6 +40,7 @@ function toView(l: Loaded, isOwner: boolean, hearts: Record<string, number>): Co
 		createdAt: r.created_at,
 		sharedAt: r.shared_at,
 		displayName: r.display_name,
+		curated: r.owner_id === CURATED_OWNER,
 		myAnswer: r.my_answer,
 		myPicks: parseList(r.my_picks),
 		answers: l.answers,
@@ -159,6 +160,7 @@ consultations.post("/:id/more", async (c) => {
 	const limited = await limitConsult(c);
 	if (limited) return limited;
 	// 同時に2回押されても1回だけ通す（slot が重なって、人数の上限を超えないように）。印は書き終えたら外す
+	if (await aiCapped(c)) return c.json({ error: "ai_daily_limit" satisfies ErrorCode }, 429);
 	const startedAt = Date.now();
 	if (!(await takeMore(c.env.DB, loaded.row.id, loaded.answers.length, startedAt))) return c.json({ error: "busy" satisfies ErrorCode }, 409);
 	return streamAnswers(c, {

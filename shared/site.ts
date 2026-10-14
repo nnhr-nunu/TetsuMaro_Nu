@@ -28,6 +28,9 @@ export const ANSWER_COUNT = 7;
 export const MORE_COUNT = 2;
 export const MIN_PHILOSOPHY = 5;
 
+/** 運営が用意した見本の相談の持ち主（scripts/curated/。だれの端末でもない） */
+export const CURATED_OWNER = "curated";
+
 /** 一般向けと大人向け（大人向けは後で seiheki.net の下に開く。今は general だけ） */
 export type Mode = "general" | "adult";
 

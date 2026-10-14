@@ -6,9 +6,9 @@ import { looksCrisis } from "../../shared/crisis";
 import { relatedNunu } from "../../shared/nunu";
 import { buildConsultPrompt } from "../../shared/prompt";
 import { AGE_BANDS, ANSWER_COUNT, BODY_MAX, DAILY_PER_OWNER, GENDERS, type Mode } from "../../shared/site";
-import { aiStream } from "../ai";
+import { aiStream, usesRealAi } from "../ai";
 import { applyMeta, countToday, deleteConsultation, finishConsultation, insertAnswer, insertConsultation, saveNunu } from "../db/consultations";
-import { countAiCall } from "../db/usage";
+import { aiDailyFull, countAiCall } from "../db/usage";
 import type { AppEnv } from "../env";
 import { GeminiError } from "../gemini/client";
 import { readBody } from "../http";
@@ -26,6 +26,10 @@ const bodySchema = z.object({
 	turnstile: z.string().optional(),
 });
 
+/** 今日 Gemini を呼んだ回数が上限（AI_DAILY_LIMIT）に達しているか。偽の AI のときは見ない */
+export const aiCapped = async (c: Context<AppEnv>): Promise<boolean> =>
+	usesRealAi(c.env) && (await aiDailyFull(c.env.DB, Date.now(), Number(c.env.AI_DAILY_LIMIT)));
+
 /** 今は一般向けだけ。大人向けを開くときは、アドレス（seiheki.net の下）から決める */
 export const modeOf = (_c: Context<AppEnv>): Mode => "general";
 
@@ -42,6 +46,7 @@ consult.post("/", async (c) => {
 	const owner = await ensureOwner(c);
 	const now = Date.now();
 	if ((await countToday(c.env.DB, owner.id, now)) >= DAILY_PER_OWNER) return c.json({ error: "daily_owner_limit" satisfies ErrorCode }, 429);
+	if (await aiCapped(c)) return c.json({ error: "ai_daily_limit" satisfies ErrorCode }, 429);
 
 	const id = newId();
 	const mode = modeOf(c);

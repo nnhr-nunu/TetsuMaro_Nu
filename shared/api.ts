@@ -55,6 +55,8 @@ export type ConsultationView = {
 	createdAt: number;
 	sharedAt: number | null;
 	displayName: string | null;
+	/** 運営が用意した見本の相談（scripts/curated/） */
+	curated: boolean;
 	myAnswer: string | null;
 	/** 相談者が刺さった人（哲学者の id。"nunu" はぬぬはら） */
 	myPicks: string[];
@@ -74,6 +76,7 @@ export type SharedItem = {
 	tags: string[];
 	sharedAt: number;
 	displayName: string | null;
+	curated: boolean;
 	/** 一番刺さった人（相談者の選んだ人、なければ見た人の刺さったが一番多い人） */
 	topPhilosopher: string | null;
 	heartTotal: number;

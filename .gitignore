@@ -6,3 +6,7 @@ dist
 test-results
 playwright-report
 .superpowers
+scripts/curated/work
+.claude/worktrees
+.admin-token
+.reporter-key

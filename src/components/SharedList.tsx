@@ -16,6 +16,7 @@ export function SharedList({ items }: { items: SharedItem[] }) {
 						<Link to={`/c/${item.id}`} className="flex h-full flex-col rounded-3xl border border-line bg-white p-4 transition hover:border-ink">
 							<div className="flex flex-wrap items-center gap-1.5 text-xs">
 								<span className="rounded-full bg-ink px-2.5 py-0.5 font-bold text-white">{categoryName(item.category)}</span>
+								{item.curated && <span className="rounded-full border border-line px-2.5 py-0.5 text-ink-soft">相談の例</span>}
 								{item.tags.map((t) => (
 									<span key={t} className="rounded-full bg-mist px-2.5 py-0.5 text-ink-soft">
 										{tagName(t)}

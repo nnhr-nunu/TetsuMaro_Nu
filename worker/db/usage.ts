@@ -12,3 +12,13 @@ export async function countAiCall(db: D1Database, now: number, failed: boolean):
 		.bind(jstDay(now), failed ? 1 : 0)
 		.run();
 }
+
+/**
+ * 今日（日本時間）Gemini を呼んだ回数が上限に達したか。上限は AI_DAILY_LIMIT（wrangler.jsonc の vars）。
+ * 有料枠で使いすぎないための歯止め（無料枠なら Gemini 側の日の上限が先に来る）。0 や数でない値なら上限なし
+ */
+export async function aiDailyFull(db: D1Database, now: number, limit: number): Promise<boolean> {
+	if (!Number.isFinite(limit) || limit <= 0) return false;
+	const row = await db.prepare("SELECT calls FROM ai_usage WHERE day = ?").bind(jstDay(now)).first<{ calls: number }>();
+	return (row?.calls ?? 0) >= limit;
+}

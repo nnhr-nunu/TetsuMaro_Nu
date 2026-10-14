@@ -1,5 +1,5 @@
 import type { SharedItem } from "../../shared/api";
-import type { Mode } from "../../shared/site";
+import { CURATED_OWNER, type Mode } from "../../shared/site";
 import type { CategoryId } from "../../shared/themes";
 import { parseList } from "./consultations";
 
@@ -44,6 +44,7 @@ type Row = {
 	tags: string;
 	shared_at: number;
 	display_name: string | null;
+	owner_id: string;
 	my_picks: string;
 	top_hearted: string | null;
 	heart_total: number;
@@ -53,7 +54,7 @@ type Row = {
 const TOP_HEARTED =
 	"(SELECT philosopher_id FROM hearts h WHERE h.consultation_id = c.id GROUP BY philosopher_id ORDER BY COUNT(*) DESC, philosopher_id LIMIT 1)";
 const HEART_TOTAL = "(SELECT COUNT(*) FROM hearts h WHERE h.consultation_id = c.id)";
-const SELECT = `SELECT c.id, substr(c.body, 1, ${EXCERPT}) AS excerpt, c.category, c.tags, c.shared_at, c.display_name, c.my_picks, ${TOP_HEARTED} AS top_hearted, ${HEART_TOTAL} AS heart_total FROM consultations c`;
+const SELECT = `SELECT c.id, substr(c.body, 1, ${EXCERPT}) AS excerpt, c.category, c.tags, c.shared_at, c.display_name, c.owner_id, c.my_picks, ${TOP_HEARTED} AS top_hearted, ${HEART_TOTAL} AS heart_total FROM consultations c`;
 const PUBLIC = "c.shared_at IS NOT NULL AND c.hidden_at IS NULL AND c.mode = ?";
 
 const escapeLike = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
@@ -67,6 +68,7 @@ function toItem(r: Row): SharedItem {
 		tags: parseList(r.tags),
 		sharedAt: r.shared_at,
 		displayName: r.display_name,
+		curated: r.owner_id === CURATED_OWNER,
 		topPhilosopher: picks[0] ?? r.top_hearted,
 		heartTotal: r.heart_total,
 	};

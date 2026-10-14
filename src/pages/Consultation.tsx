@@ -208,7 +208,7 @@ function ConsultationPage({ id }: { id: string }) {
 					{view && isOwner && (
 						<span className={`rounded-full px-2.5 py-0.5 font-bold ${view.sharedAt ? "bg-ink text-white" : "bg-mist"}`}>{view.sharedAt ? "共有中" : "あなただけが見られます"}</span>
 					)}
-					{view && !isOwner && <span>{view.displayName ?? "匿名"}さんの相談</span>}
+					{view && !isOwner && <span>{view.curated ? "運営が用意した相談の例" : `${view.displayName ?? "匿名"}さんの相談`}</span>}
 				</div>
 				<p className="rounded-3xl border border-line bg-white p-5 text-lg leading-relaxed whitespace-pre-wrap">{body}</p>
 			</section>

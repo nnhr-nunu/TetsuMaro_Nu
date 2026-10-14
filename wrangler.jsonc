@@ -22,6 +22,10 @@
 		{ "name": "REPORT_LIMIT", "namespace_id": "2004", "simple": { "limit": 5, "period": 60 } },
 		{ "name": "SEARCH_LIMIT", "namespace_id": "2005", "simple": { "limit": 20, "period": 60 } }
 	],
+	"vars": {
+		// Gemini を1日（日本時間）に呼ぶ回数の上限（相談・ほかの哲学者にも聞くの合計）。有料枠の使いすぎの歯止め。0 なら上限なし（worker/db/usage.ts）
+		"AI_DAILY_LIMIT": "200"
+	},
 	// エラーのログを残す（無料プランでも1日20万件まで）
 	"observability": { "enabled": true },
 	"d1_databases": [
