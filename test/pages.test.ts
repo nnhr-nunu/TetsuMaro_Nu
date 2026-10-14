@@ -61,6 +61,18 @@ describe("画面の配信", () => {
 		expect(html).toContain("<title>ニーチェの考え方｜哲マロ(ぬ)</title>");
 	});
 
+	it("画面の HTML は、ほかのサイトの枠（iframe）に入れさせない（Content-Security-Policy: frame-ancestors 'none'）", async () => {
+		for (const path of ["/", "/search", "/c/pageshared", "/c/pageprivate", "/philosophers/nietzsche", "/theme/work", "/no/such/page"]) {
+			expect((await page(path)).headers.get("content-security-policy"), path).toBe("frame-ancestors 'none'");
+		}
+	});
+
+	it("元の応答に CSP があれば、それを残して frame-ancestors を足す", async () => {
+		const withCsp = { fetch: async () => new Response(INDEX, { headers: { "content-type": "text/html", "content-security-policy": "img-src 'self'" } }) } as unknown as Fetcher;
+		const res = await app.request("https://tetsumaro.example/", {}, { ...env, ASSETS: withCsp });
+		expect(res.headers.get("content-security-policy")).toBe("img-src 'self'; frame-ancestors 'none'");
+	});
+
 	it("自分の相談の一覧と管理画面は noindex", async () => {
 		expect(await (await page("/me")).text()).toContain('content="noindex"');
 		expect(await (await page("/admin")).text()).toContain('content="noindex"');

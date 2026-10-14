@@ -14,6 +14,8 @@ type PageMeta = { title?: string; description?: string; noindex?: boolean };
 /** 相談の題名に入れる先頭の長さ */
 const TITLE_EXCERPT = 30;
 
+const FRAME_ANCESTORS = "frame-ancestors 'none'";
+
 export function rewriteMeta(html: Response, meta: PageMeta, pageUrl: string): Response {
 	const set = (content: string | undefined) => ({
 		element(el: Element) {
@@ -46,6 +48,9 @@ async function render(c: Context<AppEnv>, meta: PageMeta, status: 200 | 404 = 20
 	// 中身を書き換えたので、元の index.html の ETag は使わない
 	out.headers.delete("etag");
 	out.headers.set("Cache-Control", "no-cache");
+	// ほかのサイトの枠（iframe）に入れさせない（クリックジャッキング）。元の応答に CSP があれば、それを残して足す
+	const csp = out.headers.get("Content-Security-Policy");
+	out.headers.set("Content-Security-Policy", csp ? (/frame-ancestors/i.test(csp) ? csp : `${csp}; ${FRAME_ANCESTORS}`) : FRAME_ANCESTORS);
 	return out;
 }
 
