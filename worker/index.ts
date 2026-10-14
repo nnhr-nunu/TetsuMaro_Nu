@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "./env";
+import { consult } from "./routes/consult";
 
 // strict: false で、末尾に / が付いた URL（外から貼られたリンク）も同じページにする
 const app = new Hono<AppEnv>({ strict: false });
@@ -12,6 +13,7 @@ app.use("/api/*", async (c, next) => {
 });
 
 app.get("/api/health", (c) => c.json({ ok: true }));
+app.route("/api/consult", consult);
 app.all("/api/*", (c) => c.json({ error: "not_found" }, 404));
 
 // 画面のパスは静的アセット（index.html）に任せる。OGP の書き換えと 404 は worker/pages.ts（Task 11）

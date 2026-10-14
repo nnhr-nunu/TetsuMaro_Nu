@@ -21,6 +21,7 @@ export type AnswerEvent = {
 export type NunuEvent = { type: "nunu"; body: string; related: string[] };
 
 export type ErrorCode =
+	| "bad_request"
 	| "empty"
 	| "too_long"
 	| "rate_limited"
