@@ -50,6 +50,7 @@ export function MePage() {
 								<div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
 									<span>{dateText(c.createdAt)}</span>
 									{c.sharedAt !== null && <span className="rounded-full bg-ink px-2.5 py-0.5 font-bold text-white">共有中</span>}
+									{c.status === "pending" && <span className="rounded-full bg-mist px-2.5 py-0.5 text-ink-soft">回答を書いている途中</span>}
 								</div>
 								<p className="mt-2 line-clamp-2 leading-relaxed">
 									{c.excerpt}

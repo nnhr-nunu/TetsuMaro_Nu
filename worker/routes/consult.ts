@@ -13,6 +13,7 @@ import type { AppEnv } from "../env";
 import { GeminiError } from "../gemini/client";
 import { readBody } from "../http";
 import { newId } from "../ids";
+import { limitConsult } from "../limits";
 import { ensureOwner } from "../owner";
 import { requireTurnstile } from "../turnstile";
 
@@ -35,7 +36,7 @@ consult.post("/", async (c) => {
 	if (!text) return c.json({ error: "empty" satisfies ErrorCode }, 400);
 	if (text.length > BODY_MAX) return c.json({ error: "too_long" satisfies ErrorCode }, 400);
 
-	const blocked = await requireTurnstile(c, input.turnstile, "consult");
+	const blocked = (await requireTurnstile(c, input.turnstile, "consult")) ?? (await limitConsult(c));
 	if (blocked) return blocked;
 	const owner = await ensureOwner(c);
 	const now = Date.now();
@@ -133,7 +134,7 @@ export function streamAnswers(
 		}
 
 		const model = run.model();
-		if (model && model !== "fake") {
+		if (run.real) {
 			await countAiCall(db, Date.now(), state.answered.length === 0).catch(() => {});
 			// 1回の相談で使ったトークン数（無料枠の1分あたりの上限に近いかを、ログ（observability）で見る）
 			console.log(JSON.stringify({ event: "gemini_usage", model, ...run.usage(), answered: state.answered.length, more: !first }));

@@ -3,12 +3,13 @@ import { z } from "zod";
 import type { ConsultationView, ErrorCode } from "../../shared/api";
 import { philosopherById } from "../../shared/philosophers";
 import { ANSWER_COUNT, BODY_MAX, MORE_COUNT, MY_ANSWER_MAX, NAME_MAX } from "../../shared/site";
-import { type Loaded, deleteConsultation, loadConsultation, parseList } from "../db/consultations";
+import { type Loaded, deleteConsultation, loadConsultation, parseList, settleStale } from "../db/consultations";
 import { addHeart, heartCounts } from "../db/hearts";
 import { indexShared, unindexShared } from "../db/shared";
 import type { AppEnv } from "../env";
 import { readBody } from "../http";
 import { networkHash } from "../ipHash";
+import { limitConsult } from "../limits";
 import { ownerOf } from "../owner";
 import { streamAnswers } from "./consult";
 
@@ -48,7 +49,8 @@ function toView(l: Loaded, isOwner: boolean, hearts: Record<string, number>): Co
 
 /** 相談と、見ている人が持ち主か。持ち主でなければ共有中で隠されていないものだけ（それ以外は null = 404） */
 async function visible(c: Context<AppEnv>, id: string): Promise<{ loaded: Loaded; isOwner: boolean } | null> {
-	const loaded = await loadConsultation(c.env.DB, id);
+	const found = await loadConsultation(c.env.DB, id);
+	const loaded = found && (await settleStale(c.env.DB, found, Date.now()));
 	if (!loaded) return null;
 	const owner = await ownerOf(c);
 	const isOwner = owner?.id === loaded.row.owner_id;
@@ -152,6 +154,8 @@ consultations.post("/:id/more", async (c) => {
 	if (!loaded) return notFound(c);
 	const exclude = loaded.answers.map((a) => a.philosopher).filter((id) => philosopherById(id));
 	if (loaded.row.status === "pending" || exclude.length === 0 || exclude.length >= MAX_ANSWERS) return badRequest(c);
+	const limited = await limitConsult(c);
+	if (limited) return limited;
 	return streamAnswers(c, {
 		id: loaded.row.id,
 		body: loaded.row.body,

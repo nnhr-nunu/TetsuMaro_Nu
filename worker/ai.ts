@@ -10,6 +10,8 @@ export type AiRun = {
 	model(): string | null;
 	/** 使ったトークン数（Gemini が知らせた最後の値）。偽の AI と、まだ届いていないときは null */
 	usage(): { prompt: number; output: number } | null;
+	/** 本物の Gemini を呼んだか（呼んだ回数と失敗を ai_usage に数えるかどうか。1文字も書かれずに失敗したときも true） */
+	real: boolean;
 };
 
 /**
@@ -22,7 +24,7 @@ export function aiStream(
 	opts: { count: number; exclude: readonly string[]; mode: Mode; body: string; signal?: AbortSignal },
 ): AiRun {
 	if (!env.GEMINI_API_KEY || env.AI_FAKE) {
-		return { text: fakeAiStream({ ...opts, behavior: env.AI_FAKE || "1" }), model: () => "fake", usage: () => null };
+		return { text: fakeAiStream({ ...opts, behavior: env.AI_FAKE || "1" }), model: () => "fake", usage: () => null, real: false };
 	}
 	let used: string | null = null;
 	let usage: { prompt: number; output: number } | null = null;
@@ -38,5 +40,5 @@ export function aiStream(
 			usage = u;
 		},
 	});
-	return { text, model: () => used, usage: () => usage };
+	return { text, model: () => used, usage: () => usage, real: true };
 }

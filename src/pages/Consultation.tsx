@@ -5,6 +5,7 @@ import { philosopherById } from "../../shared/philosophers";
 import { ANSWER_COUNT, MORE_COUNT } from "../../shared/site";
 import { ApiError, errorText, getJson, sendJson, streamEvents } from "../api";
 import { btnPrimary, btnSecondary } from "../buttons";
+import { visibleAnswers } from "../answersView";
 import { AnswerCard } from "../components/AnswerCard";
 import { CompareTable } from "../components/CompareTable";
 import { ConfirmButton } from "../components/ConfirmButton";
@@ -24,16 +25,18 @@ const MAX_ANSWERS = ANSWER_COUNT + MORE_COUNT * 3;
 /** 待っている間に並べる顔ぶれ（どの人が選ばれるかが届く前） */
 const WAITING_FACES = ["socrates", "buddha", "kant", "nietzsche", "confucius"];
 
-/** 届いた順を保ったまま、同じ人を重ねずにつなぐ */
-function joinAnswers(...lists: AnswerEvent[][]): AnswerEvent[] {
-	const seen = new Set<string>();
-	return lists.flat().filter((a) => !seen.has(a.philosopher) && seen.add(a.philosopher));
-}
-
 const dateText = (ms: number) => new Date(ms).toLocaleDateString("ja-JP", { year: "numeric", month: "long", day: "numeric" });
 
-export function ConsultationPage() {
+/** 相談の id が変わったら（似た悩みから別の相談へ移ったとき）、前の相談の中身を持ち越さないよう作り直す */
+export function ConsultationRoute() {
 	const { id = "" } = useParams();
+	return <ConsultationPage key={id} id={id} />;
+}
+
+/** 書きかけ（pending）の相談を、届いている流れが無いまま開いたときに読み直す間隔 */
+const PENDING_POLL_MS = 3000;
+
+function ConsultationPage({ id }: { id: string }) {
 	const navigate = useNavigate();
 	const live = useLive();
 	const here = live?.id === id ? live : null;
@@ -86,18 +89,28 @@ export function ConsultationPage() {
 			.catch(() => setSimilar([]));
 	}, [view?.sharedAt, id]);
 
+	// 書きかけの相談を、届いている流れが無いまま開いた（開き直した・通信が切れた）ときは、書き終わるまで読み直す
+	const waitingSaved = view?.status === "pending" && !here;
+	useEffect(() => {
+		if (!waitingSaved) return;
+		const timer = setInterval(() => void load(), PENDING_POLL_MS);
+		return () => clearInterval(timer);
+	}, [waitingSaved, load]);
+
 	const body = view?.body ?? here?.body ?? "";
 	useTitle(body ? `相談「${[...body].slice(0, 20).join("")}…」` : null);
 
 	if (missing && !here) return <NotFound message="この相談は見つかりませんでした。消されたか、共有をやめた相談かもしれません。" />;
 	if (!view && !here) return <p className="py-12 text-center text-ink-soft">読み込み中…</p>;
 
-	const answers = joinAnswers(streaming ? (here?.answers ?? []) : (view?.answers ?? here?.answers ?? []), more.answers);
+	const answers = visibleAnswers({ saved: view?.answers ?? [], live: here?.answers ?? [], more: more.answers });
 	const isOwner = view?.isOwner ?? here !== null;
 	const crisis = Boolean(view?.crisis || here?.meta?.crisis);
 	const nunu = (streaming ? here?.nunu : (view?.nunu ?? here?.nunu)) ?? null;
 	const waiting = streaming ? (here?.meta?.picks ?? []).filter((p) => !answers.some((a) => a.philosopher === p)) : [];
 	const failed = here?.status === "error" && answers.length === 0;
+	/** 書き終わった相談だけ、自分の答え・共有・ほかの哲学者にも聞くを出す */
+	const settled = Boolean(view && view.status !== "pending" && !streaming);
 
 	const heartOf = (pid: string) => {
 		if (!view || streaming) return undefined;
@@ -185,6 +198,12 @@ export function ConsultationPage() {
 				</div>
 			)}
 
+			{waitingSaved && (
+				<p role="status" className="animate-pulse rounded-3xl bg-mist p-4 text-center text-sm text-ink-soft">
+					まだ回答を書いています。書き終わると、ここに出ます。
+				</p>
+			)}
+
 			{(answers.length > 0 || waiting.length > 0) && <CompareTable answers={answers} waiting={waiting} />}
 
 			{answers.length > 0 && (
@@ -196,7 +215,7 @@ export function ConsultationPage() {
 				</section>
 			)}
 
-			{isOwner && view && !streaming && answers.length > 0 && answers.length < MAX_ANSWERS && (
+			{isOwner && view && settled && answers.length > 0 && answers.length < MAX_ANSWERS && (
 				<div className="space-y-2">
 					<button type="button" className={`${btnSecondary} w-full`} disabled={more.busy} onClick={() => void askMore()}>
 						<Icon name="plus" />
@@ -208,7 +227,7 @@ export function ConsultationPage() {
 
 			{nunu && <NunuSection nunu={nunu} heart={heartOf("nunu")} />}
 
-			{isOwner && view && !streaming && answers.length > 0 && (
+			{isOwner && view && settled && answers.length > 0 && (
 				<>
 					<MyAnswer view={view} onSaved={(myAnswer) => setView({ ...view, myAnswer })} />
 					<SharePanel view={view} onChange={(patch) => setView({ ...view, ...patch })} />

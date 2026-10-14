@@ -103,3 +103,16 @@ describe("Turnstile", () => {
 		expect(await res.json()).toMatchObject({ error: "turnstile", action: "consult" });
 	});
 });
+
+describe("Turnstile と相談の歯止め", () => {
+	it("トークン無しで断られた1回目は、相談の歯止めを使わない（403 turnstile になり、429 にならない）", async () => {
+		const blocked = { limit: async () => ({ success: false }) } as unknown as RateLimit;
+		const res = await app.request(
+			"/api/consult",
+			{ method: "POST", headers: { "Content-Type": "application/json", "cf-connecting-ip": "203.0.113.50" }, body: JSON.stringify({ body: "相談" }) },
+			{ ...env, TURNSTILE_SECRET_KEY: "secret", CONSULT_LIMIT: blocked } as AppEnv["Bindings"],
+		);
+		expect(res.status).toBe(403);
+		expect(await res.json()).toMatchObject({ error: "turnstile" });
+	});
+});

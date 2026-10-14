@@ -15,3 +15,9 @@ export async function consult(page: Page, body: string): Promise<string> {
 	await expect(page.getByText(FAKE_MARK).first()).toBeVisible();
 	return new URL(page.url()).pathname.split("/").pop() as string;
 }
+
+/** 相談のページで共有する */
+export async function share(page: Page): Promise<void> {
+	await page.getByRole("button", { name: "みんなに共有する" }).click();
+	await expect(page.getByRole("heading", { name: "みんなに共有しています" })).toBeVisible();
+}

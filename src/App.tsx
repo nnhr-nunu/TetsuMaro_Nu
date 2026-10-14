@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter, Route, Routes, useLocation, useNavigationType } from "react-router";
 import { InfoSheetProvider } from "./components/InfoSheet";
 import { Layout } from "./components/Layout";
-import { ConsultationPage } from "./pages/Consultation";
+import { ConsultationRoute } from "./pages/Consultation";
 import { HomePage } from "./pages/Home";
 import { MePage } from "./pages/Me";
 import { NotFound } from "./pages/NotFound";
@@ -35,7 +35,7 @@ export function App() {
 					<Suspense fallback={<p className="text-ink-soft">読み込み中…</p>}>
 						<Routes>
 							<Route path="/" element={<HomePage />} />
-							<Route path="/c/:id" element={<ConsultationPage />} />
+							<Route path="/c/:id" element={<ConsultationRoute />} />
 							<Route path="/search" element={<SearchPage />} />
 							<Route path="/theme/:category" element={<ThemePage />} />
 							<Route path="/philosophers" element={<PhilosophersPage />} />

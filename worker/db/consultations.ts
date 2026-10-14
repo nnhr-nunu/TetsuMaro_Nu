@@ -83,6 +83,25 @@ export async function deleteConsultation(db: D1Database, id: string): Promise<vo
 	]);
 }
 
+/**
+ * 書いている途中（pending）のまま、この時間がたった相談は、もう書き終わらないものとして扱う。
+ * 画面を閉じると、残りの処理は30秒ほどで打ち切られ、終わりの印（finishConsultation）が付かないことがあるため。
+ * Gemini の1つのモデルの上限（MODEL_DEADLINE_MS = 2分）より長くする
+ */
+export const STALE_PENDING_MS = 3 * 60_000;
+
+/** 書いている途中のまま時間がたった相談を確定させる。回答があれば partial、0人なら消して null */
+export async function settleStale(db: D1Database, loaded: Loaded, now: number): Promise<Loaded | null> {
+	const { row } = loaded;
+	if (row.status !== "pending" || now - row.created_at < STALE_PENDING_MS) return loaded;
+	if (loaded.answers.length === 0) {
+		await deleteConsultation(db, row.id);
+		return null;
+	}
+	await db.prepare("UPDATE consultations SET status = 'partial' WHERE id = ? AND status = 'pending'").bind(row.id).run();
+	return { ...loaded, row: { ...row, status: "partial" } };
+}
+
 export async function loadConsultation(db: D1Database, id: string): Promise<Loaded | null> {
 	const [rows, answers, nunu] = await db.batch([
 		db.prepare("SELECT * FROM consultations WHERE id = ?").bind(id),
