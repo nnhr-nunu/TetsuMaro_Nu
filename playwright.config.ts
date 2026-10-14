@@ -9,9 +9,10 @@ export default defineConfig({
 	// 端末に入っている Chrome を使う（Playwright 同梱の Chromium は入れていない）
 	use: { baseURL: "http://localhost:5183", channel: "chrome", locale: "ja-JP" },
 	webServer: {
-		// AI はいつも偽物（.dev.vars にキーがあっても、E2E では本物を呼ばない）
 		command: "npm run db:local && npm run dev -- --port 5183 --strictPort",
-		env: { CLOUDFLARE_ENV: "", AI_FAKE: "1" },
+		// AI はいつも偽物（.dev.vars にキーがあっても、E2E では本物を呼ばない）。CLOUDFLARE_INCLUDE_PROCESS_ENV で、この AI_FAKE を Worker の env に渡す。
+		// 渡らなかったときは、偽の回答の文（e2e/helpers.ts の FAKE_MARK）が出ないのでテストが落ちて気づける
+		env: { CLOUDFLARE_INCLUDE_PROCESS_ENV: "true", AI_FAKE: "1" },
 		url: "http://localhost:5183/api/health",
 		reuseExistingServer: false,
 		timeout: 120_000,
