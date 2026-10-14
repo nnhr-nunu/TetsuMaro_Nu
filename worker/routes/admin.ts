@@ -6,14 +6,15 @@ import { hideConsultation } from "../db/reports";
 import { indexShared } from "../db/shared";
 import type { AppEnv } from "../env";
 import { readBody } from "../http";
+import { sameSecret } from "../secret";
 
 export const admin = new Hono<AppEnv>();
 
-/** 合言葉（Authorization: Bearer <ADMIN_TOKEN>）。合言葉が入っていなければ、管理用の API は無いものとして 404 */
+/** 合言葉（Authorization: Bearer <ADMIN_TOKEN>）。合言葉が入っていなければ、管理用の API は無いものとして 404。比べるときは時間で探られないようにする */
 admin.use("*", async (c, next) => {
 	const token = c.env.ADMIN_TOKEN;
 	if (!token) return c.json({ error: "not_found" }, 404);
-	if (c.req.header("authorization") !== `Bearer ${token}`) return c.json({ error: "unauthorized" }, 401);
+	if (!(await sameSecret(c.req.header("authorization") ?? "", `Bearer ${token}`))) return c.json({ error: "unauthorized" }, 401);
 	await next();
 });
 
