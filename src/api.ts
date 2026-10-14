@@ -24,13 +24,14 @@ async function errorOf(res: Response): Promise<ApiError> {
 	return new ApiError(res.status, code, challenge);
 }
 
-async function request(method: string, path: string, body?: Record<string, unknown>): Promise<Response> {
+async function request(method: string, path: string, body?: Record<string, unknown>, signal?: AbortSignal): Promise<Response> {
 	const send = (b?: Record<string, unknown>) =>
 		fetch(path, {
 			method,
 			headers: b ? { "Content-Type": "application/json" } : undefined,
 			body: b ? JSON.stringify(b) : undefined,
 			credentials: "same-origin",
+			signal,
 		}).catch(() => {
 			throw new ApiError(0, "network");
 		});
@@ -55,9 +56,12 @@ export async function sendJson<T = { ok: true }>(method: "POST" | "PUT" | "PATCH
 	return (await res.json()) as T;
 }
 
-/** 回答の流れ（改行区切りの JSON）を1つずつ返す。始まる前に断られたら ApiError を投げる */
-export async function* streamEvents(path: string, body: Record<string, unknown> = {}): AsyncGenerator<StreamEvent> {
-	const res = await request("POST", path, body);
+/**
+ * 回答の流れ（改行区切りの JSON）を1つずつ返す。始まる前に断られたら ApiError を投げる。
+ * signal で止めると、通信が切れたときと同じ ApiError（network）を投げる（止めたのは自分なので、呼び出し側は signal を見て無視する）
+ */
+export async function* streamEvents(path: string, body: Record<string, unknown> = {}, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+	const res = await request("POST", path, body, signal);
 	if (!res.ok || !res.body) throw await errorOf(res);
 	const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
 	const splitter = new LineSplitter();

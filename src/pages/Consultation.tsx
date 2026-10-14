@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { AnswerEvent, ConsultationView, SharedItem } from "../../shared/api";
 import { philosopherById } from "../../shared/philosophers";
@@ -17,7 +17,7 @@ import { Portrait } from "../components/Portrait";
 import { SharedList } from "../components/SharedList";
 import { forgetHeart, heartedSet, loadDraft, rememberHeart, saveDraft } from "../draft";
 import { Icon } from "../icons";
-import { clearLiveIfDone, useLive } from "../liveConsult";
+import { abortLive, clearLiveIfDone, useLive } from "../liveConsult";
 import { sendOptimistic } from "../optimistic";
 import { useTitle } from "../useTitle";
 import { NotFound } from "./NotFound";
@@ -84,6 +84,16 @@ function ConsultationPage({ id }: { id: string }) {
 	}, [hereStatus, load, here]);
 
 	useEffect(() => () => clearLiveIfDone(), []);
+
+	// 別の相談へ移ったとき、前の相談がまだ届いている途中なら止める（2つの流れが表示を取り合わないように）
+	const liveId = live?.status === "streaming" ? live.id : null;
+	useEffect(() => {
+		if (liveId && liveId !== id) abortLive();
+	}, [liveId, id]);
+
+	// 「ほかの哲学者にも聞く」の流れ。ページを離れたら止める
+	const moreFlow = useRef<AbortController | null>(null);
+	useEffect(() => () => moreFlow.current?.abort(), []);
 
 	useEffect(() => {
 		if (!view?.sharedAt) return;
@@ -167,16 +177,22 @@ function ConsultationPage({ id }: { id: string }) {
 	};
 
 	const askMore = async () => {
+		const flow = new AbortController();
+		moreFlow.current = flow;
 		setMore((m) => ({ ...m, busy: true, error: null }));
 		try {
-			for await (const ev of streamEvents(`/api/consultations/${id}/more`)) {
+			for await (const ev of streamEvents(`/api/consultations/${id}/more`, {}, flow.signal)) {
+				if (flow.signal.aborted) return;
 				if (ev.type === "answer") setMore((m) => ({ ...m, answers: [...m.answers, ev] }));
 				if (ev.type === "error") setMore((m) => ({ ...m, error: errorText(ev.code) }));
 			}
 			const loaded = await load();
+			if (flow.signal.aborted) return;
 			// 読み直せたら、届いた分は保存された中身に入っている。読み直せなかったら、届いた分をそのまま見せ続ける
 			setMore((m) => ({ ...m, answers: loaded ? [] : m.answers, busy: false }));
 		} catch (err) {
+			// 止めたのは自分（ページを離れた）なので、知らせない
+			if (flow.signal.aborted) return;
 			setMore((m) => ({ ...m, busy: false, error: errorText(err) }));
 		}
 	};

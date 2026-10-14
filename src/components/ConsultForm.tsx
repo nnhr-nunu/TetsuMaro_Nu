@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { AGE_BANDS, type AgeBandId, BODY_MAX, GENDERS, type GenderId } from "../../shared/site";
-import { errorText } from "../api";
+import { errorText, streamEvents } from "../api";
 import { btnPrimary } from "../buttons";
 import { adultConfirmed, clearDraftBody, confirmAdult, loadDraft, saveDraft } from "../draft";
 import { startConsult } from "../liveConsult";
@@ -35,10 +35,15 @@ export function ConsultForm() {
 		setSending(true);
 		setError(null);
 		try {
-			await startConsult({ body: draft.body.trim(), ageBand: draft.ageBand, gender: draft.gender }, (id) => {
-				clearDraftBody();
-				navigate(`/c/${id}`);
-			});
+			const input = { body: draft.body.trim(), ageBand: draft.ageBand, gender: draft.gender };
+			await startConsult(
+				input.body,
+				(signal) => streamEvents("/api/consult", input, signal),
+				(id) => {
+					clearDraftBody();
+					navigate(`/c/${id}`);
+				},
+			);
 		} catch (err) {
 			setError(errorText(err));
 		} finally {
