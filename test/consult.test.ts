@@ -61,6 +61,17 @@ describe("POST /api/consult", () => {
 		expect(await long.json()).toEqual({ error: "too_long" });
 	});
 
+	it("字数は文字（コードポイント）で数える。絵文字だけの1000字は通り、1001字は 400 too_long", async () => {
+		const ok = post({ body: "😀".repeat(1000) });
+		const r = await ok.res;
+		expect(r.status).toBe(200);
+		await r.text();
+		await waitOnExecutionContext(ok.ctx);
+		const long = await post({ body: "😀".repeat(1001) }).res;
+		expect(long.status).toBe(400);
+		expect(await long.json()).toEqual({ error: "too_long" });
+	});
+
 	it("同じ端末の11回目は 429 daily_owner_limit", async () => {
 		const first = post({ body: "1回目" });
 		const r = await first.res;

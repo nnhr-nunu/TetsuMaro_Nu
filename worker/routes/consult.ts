@@ -34,7 +34,8 @@ consult.post("/", async (c) => {
 	if (!input) return c.json({ error: "bad_request" satisfies ErrorCode }, 400);
 	const text = input.body.trim();
 	if (!text) return c.json({ error: "empty" satisfies ErrorCode }, 400);
-	if (text.length > BODY_MAX) return c.json({ error: "too_long" satisfies ErrorCode }, 400);
+	// 字数は画面と同じ数え方（文字＝コードポイント）。.length は UTF-16 で絵文字を2字に数える。UTF-16 の長さが2倍を超えたものは数えるまでもなく長すぎる
+	if (text.length > BODY_MAX * 2 || [...text].length > BODY_MAX) return c.json({ error: "too_long" satisfies ErrorCode }, 400);
 
 	const blocked = (await requireTurnstile(c, input.turnstile, "consult")) ?? (await limitConsult(c));
 	if (blocked) return blocked;

@@ -2,7 +2,7 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { ConsultationView, StreamEvent } from "../shared/api";
-import { ANSWER_COUNT, MORE_COUNT } from "../shared/site";
+import { ANSWER_COUNT, BODY_MAX, MORE_COUNT, MY_ANSWER_MAX, NAME_MAX } from "../shared/site";
 import { MORE_LOCK_MS } from "../worker/db/consultations";
 import app from "../worker/index";
 import { hashKey } from "../worker/owner";
@@ -108,6 +108,17 @@ describe("相談のページの API", () => {
 		await call("PUT", `/api/consultations/${id}/share`, { cookie, body: {} });
 		expect((await call("PATCH", `/api/consultations/${id}`, { cookie, body: { body: "共有後に直す" } })).status).toBe(400);
 		expect((await call("PATCH", `/api/consultations/${id}`, { cookie, body: { myAnswer: "あ".repeat(201) } })).status).toBe(400);
+	});
+
+	it("直す文字の字数は文字（コードポイント）で数える。絵文字だけでも上限ちょうどは通り、1字超えたら 400", async () => {
+		const { id, cookie } = await consultAs("絵文字で字数を数える");
+		const patch = (body: Record<string, string>) => call("PATCH", `/api/consultations/${id}`, { cookie, body });
+		expect((await patch({ myAnswer: "😀".repeat(MY_ANSWER_MAX) })).status).toBe(200);
+		expect((await patch({ myAnswer: "😀".repeat(MY_ANSWER_MAX + 1) })).status).toBe(400);
+		expect((await patch({ displayName: "😀".repeat(NAME_MAX) })).status).toBe(200);
+		expect((await patch({ displayName: "😀".repeat(NAME_MAX + 1) })).status).toBe(400);
+		expect((await patch({ body: "😀".repeat(BODY_MAX) })).status).toBe(200);
+		expect((await patch({ body: "😀".repeat(BODY_MAX + 1) })).status).toBe(400);
 	});
 
 	it("ほかの哲学者にも聞くと2人増え、前の人と重ならない", async () => {
