@@ -1,40 +1,42 @@
 # task.md（哲マロ(ぬ)）
 
-## 今の状態（2026-10-14）
+## 今の状態（2026-10-14 夕方）
 
-- 実装計画（docs/superpowers/plans/2026-10-14-tetsumaro.md）の Task 1〜19 まで実装した。手元では偽の AI で一通り動く（相談 → 7人の回答 → 比べ表・補足・刺さった → 自分の答え → 共有 → みんなの相談で検索 → 名簿）
-- 名簿38人（`shared/philosophers/data/`）、38人の絵（`public/portraits/`）、ぬぬはらのマシュマロ回答92件（`shared/nunu/answers.json`）がそろった
-- まだ本物の Gemini で回答を作っていない（キーが無い）。公開もまだ
+- 実装計画（docs/superpowers/plans/2026-10-14-tetsumaro.md）の Task 1〜19 は実装済み。手元では偽の AI で一通り動く
+- 本番の準備（アカウント nnhr）: ワーカー `tetsumaro-nu`、D1 `tetsumaro`（id は wrangler.jsonc）、Turnstile のサイトキー（shared/site.ts）、Worker のシークレット `GEMINI_API_KEY` まで済み。GitHub と Workers Builds はつながっているが、**ビルドが失敗していて本番はまだ動いていない**（workers.dev は 404。D1 のテーブルも空）
+- 残課題だった8件を直した（サーバー6件・画面2件）。マイグレーション 0002（ほかの哲学者にも聞くの印）を足した
+- Gemini を1日（日本時間）に呼ぶ回数の上限 `AI_DAILY_LIMIT`（wrangler.jsonc の vars。今は200）。達したら Gemini を呼ばずに「今日の受付は終わり」
+- **運営が用意した見本の相談46件**（Claude が書いた。みんなの相談に「相談の例」として出る。持ち主は `curated`、マイグレーション `0003_curated.sql`）。マシュマロの原文は高校生の相談やぬぬはら宛ての挨拶が多いので使わず、テーマだけ借りて大人の相談に書き直した
+  - 作り方: `scripts/curated/cases.json`（相談）→ `npx jiti scripts/curated/prompts.ts`（本番と同じ指示文を work/ に書き出す）→ Claude（サブエージェント）が `answers/<id>.jsonl` を書く → `npx jiti scripts/curated/check.ts`（本番と同じ読み取りで確かめる）→ `npx jiti scripts/curated/build.ts migrations/<番号>_curated.sql`
+  - 直すときは answers を直して build し直し、新しい番号のマイグレーションにする（中身は消して入れ直す形。id は決まった値なので URL と刺さったは変わらない）
+  - テストでは見本を消してから始める（test/apply-migrations.ts）
+- 本物の Gemini での回答はまだ一度も試していない（手元にキーが無く、本番も動いていないため）
+- 手元の `.admin-token`・`.reporter-key`（git の対象外）に、管理画面の合言葉と REPORTER_KEY を作って置いた。Worker のシークレットにはまだ入っていない（Claude の権限では入れられなかった）
 
 ## 次にやること
 
-1. ぬぬはらの「決めてほしいこと」と「操作が要るもの」（下）
-2. キーができたら `npm run eval` で試験用の相談20件を本物の Gemini にかけ、`docs/eval/<日付>.md` を読んで名簿と指示文（`shared/prompt.ts`）を直す。見るところ: 一般論だけになっていないか・全員同じ調子になっていないか・時代に合わない話・結論の一言が似ていないか・名言の選び方
-3. 本物の Gemini で1回の相談のトークン数（入力・出力。開発サーバーのログ・本番の observability に `gemini_usage` で出る）と、書き終わるまでの秒数（`npm run eval` の出力）を測る。指示文は約5.6万字（名簿38人分）。無料枠の1分あたりのトークン上限にすぐ当たるようなら、「先に7人を選ぶ（短い名簿）→ 7人分の名簿で答える」の2回に分けるかを考える（呼ぶ回数は倍になる）
+1. ぬぬはらの操作（下）が済んだら、本番で1回相談して確かめる（Gemini・D1・Turnstile）。`npx wrangler tail --format json` を開いたまま相談し、`gemini_usage`（入力・出力のトークン数）と cpuTime を見る
+2. `.dev.vars` に GEMINI_API_KEY を入れて `npm run dev` → `npm run eval`（20件で20回呼ぶ）。`docs/eval/<日付>.md` を、見本の回答（scripts/curated/answers）と読み比べて、指示文（shared/prompt.ts）と名簿を直す。見るところ: 一般論だけ・全員同じ調子・時代に合わない話・結論の一言が似る・名言の選び方
+3. 名簿の改善（下の「名簿の改善候補」）。名言を足すときは出典を Web で確かめる
 4. `/quality-review` で全体を見る（方針は `~/.claude/skills/quality-review/projects/哲マロ.md`）
 
 ## ぬぬはらに決めてほしいこと
 
-- **Gemini の無料枠のままでよいか**（おすすめ: 公開するまでに有料枠にする）
-  - Gemini API の規約では、無料枠は送った内容を Google の改善に使い、人が読むこともあり、「機微な情報・個人情報を送らないこと」と求めている。悩み相談とは相性が悪い
-  - 今の実装: 入力欄の注意書き（個人が分かることは書かない）と、規約・プライバシーポリシーに明記。コードは有料枠でも同じ（キーの請求先を有料にするだけ）
-  - 有料枠の目安（2026-10-14 の料金表から計算した概算。キャッシュで下がる）: gemini-3.1-flash-lite なら1相談およそ2〜3円、3.6-flash ならおよそ6〜8円。月1,000相談で2,000〜8,000円ほど。有料枠は送った内容を改善に使わない
-- **対象を18歳以上にした**（Gemini API の規約が18歳未満の使うアプリを禁じているため）。送る前に「18歳以上です」を確かめる。年代の選択肢は「18〜19歳」から
+- **Gemini は有料枠か**（おすすめ: 公開するまでに有料枠）。有料枠ならプライバシーポリシー（src/pages/Privacy.tsx）の「無料枠を使っているため…」を書き換える
+  - 有料枠の目安（2026-10-14 の料金表からの概算）: 1相談 2〜8円。`AI_DAILY_LIMIT` 200 なら1日の上限は400〜1,600円ほど。本番でトークン数を測ったら見直す
+- **見本の相談46件を出してよいか**（文の確認）。気になるものは `scripts/curated/answers/<id>.jsonl` を直すか、cases.json から外して build し直す
+- **oshilog.life の DNS がどちらのアカウントにあるか**（nnhr なら独自ドメインをつなげる。もう一つのアカウントなら相談）
 
 ## ぬぬはらの操作が要るもの
 
-1. **Gemini API キー**: https://aistudio.google.com/apikey で、TopicStream とは別のプロジェクトのキーを作る（無料枠を分けるため）
-   - 手元: `.dev.vars.example` を `.dev.vars` に写して `GEMINI_API_KEY=` に入れる → `npm run dev` → 別の端末で `npm run eval`
-   - 本番: Cloudflare のダッシュボードで Worker の「設定 → 変数とシークレット」に `GEMINI_API_KEY`
-   - 使えるモデルを確かめて `worker/gemini/models.ts` の並びを直す（`curl -H "x-goog-api-key: $KEY" https://generativelanguage.googleapis.com/v1beta/models`）
-2. **Cloudflare（アカウント nnhr を想定）**
-   - D1 を作る: `npx wrangler d1 create tetsumaro` → 出た database_id を `wrangler.jsonc` に入れて push
-   - Workers Builds を GitHub の nnhr-nunu/TetsuMaro_Nu につなぐ（ワーカー名 `tetsumaro`、ビルドのコマンド `npm run build`、デプロイのコマンド `npm run deploy`。性癖カルテと同じ）
-   - 独自ドメイン: oshilog.life がどのアカウントにあるかを確かめ、同じアカウントなら `wrangler.jsonc` に `"routes": [{ "pattern": "tetsumaro.oshilog.life", "custom_domain": true }]` を足す（違うアカウントなら相談）
-   - workers.dev のアドレスが `tetsumaro.nnhr.workers.dev` でなければ、`worker/turnstile.ts` の WORKERS_DEV_HOST を直す
-3. **Turnstile**: ダッシュボードでウィジェットを作る（ホスト名: tetsumaro.oshilog.life と workers.dev のアドレス）→ サイトキーを `shared/site.ts` の TURNSTILE_SITE_KEY、シークレットを Worker のシークレット `TURNSTILE_SECRET_KEY`
-4. **シークレット**: `ADMIN_TOKEN`（管理画面の合言葉）、`REPORTER_KEY`（刺さった・通報した人を見分ける鍵。長い乱数）
-5. **マシュマロ回答の印の確認**: `docs/nunu-review.md` を見て、一般向けに出してよいかを確かめる（直すときは `shared/nunu/answers.json` の audience）。依頼・雑談など相談でないもの（other の約21件）も、関連回答に出ないほうがよければ adult にする
+1. **Workers Builds の失敗を直す**: GitHub のコミットの ✕ →「Details」か、ダッシュボードの tetsumaro-nu →「デプロイ」でビルドのログを見る
+   - 見込みの原因: Workers Builds が自動で作る API トークンには D1 の権限が無い（Workers Scripts・KV・R2 など）。デプロイのコマンドが `npm run deploy`（D1 のマイグレーション込み）だと、ここで止まる
+   - 直し方: tetsumaro-nu の「設定 → ビルド → API トークン」で、性癖カルテと同じトークンを選ぶ（D1 を編集できるもの）か、「マイ プロフィール → API トークン」でこのトークンに「アカウント → D1 → 編集」を足す → ビルドをやり直す
+   - デプロイのコマンドは `npm run deploy`、ビルドのコマンドは `npm run build`（性癖カルテと同じ）
+2. **Turnstile のシークレット**: Turnstile のウィジェット「tetsumaro.oshilog.life」の秘密鍵を、tetsumaro-nu の「設定 → 変数とシークレット」に `TURNSTILE_SECRET_KEY` として入れる。独自ドメインがつながるまでは、ウィジェットのホスト名に `tetsumaro-nu.nnhr.workers.dev` も足す（足さないと workers.dev で相談を送れない）
+3. **管理画面の合言葉と REPORTER_KEY**: 「シークレットを入れて」と頼めば、Claude が手元の `.admin-token`・`.reporter-key` を `wrangler secret put` で入れる（合言葉は `.admin-token` の中身。パスワード管理アプリにも控える）
+4. **独自ドメイン**: oshilog.life が nnhr にあれば、`wrangler.jsonc` に `"routes": [{ "pattern": "tetsumaro.oshilog.life", "custom_domain": true }]` を足す（Claude に頼めばよい）
+5. **マシュマロ回答の印の確認**: `docs/nunu-review.md` を見て、一般向けに出してよいかを確かめる（直すときは `shared/nunu/answers.json` の audience）
 6. 公開したら、トップの OGP 画像（`public/og.png`、1200×630）を用意する（今は無い）
 
 ## 決定事項（2026-10-14、ぬぬはらと相談して決めた）
@@ -49,14 +51,33 @@
 - 見た目は雑誌のようなフラットデザイン。哲学者は上半身を面で塗り分けたポリゴン風のデフォルメを、コード（SVG）で描く
 - 「今日できること」は入れない。哲学者らしさと精確さに力を注ぐ
 - 年代・性別は任意で聞き、後で白書にできるよう保存する
+- （2026-10-14 夕方、おまかせで決めた）Gemini の使いすぎに1日の上限を置く。見本の相談を Claude で前もって作り、「運営が用意した相談の例」と明記して出す（ぬぬはらの「Claude で準備しておく」の案から）
 
-## 残課題（2026-10-14 の全体レビューで見つかった軽微なもの）
+## 残課題
 
-サーバー側の6件（消された相談への書き込み・ほかの哲学者にも聞くの二重送信・Gemini の空の応答・ぬぬはらの刺さった・字数の数え方・Origin／CSP／合言葉の比較）は直した。本番にはマイグレーション `0002_more_started_at.sql` が要る（`npm run deploy` が適用する）。
-
-- 見る人の「刺さった」が送れなかったとき、押した状態のまま戻らない
-- 流れている途中に次の相談を送ると、2つの流れが表示を取り合う
 - 無料プランの CPU 10ms に収まるか（初回は名簿の索引作り・指示文の組み立てが重なる）。本番の observability の cpuTime で測る
+- 独自ドメインがつながったら、workers.dev のアドレスを止めるか noindex にする（同じ中身が2つのアドレスで検索に出ないように）
+- 白書・集計を作るときは、見本の相談（owner_id = 'curated'）を外す
+
+## 名簿の改善候補（見本の回答を書いた Claude の指摘。2026-10-14）
+
+安全のための2件（兼好 q1 の第7段・アリストテレス q3）と、セネカの「師セクスティウス」の誤りは直した。指示文に「AIぬぬはらは本人の体験を作らない」を足した。ほかは次のとおり（名言を足すときは出典を確かめる）。
+
+- ニーチェ: 名言が3つしかない。『悦ばしき知識』275（もはや自分に恥じない）・276/341（運命愛・永遠回帰）、『偶像の黄昏』「箴言と矢」12（「なぜ」を持つ者は…）を足す候補
+- 孔子: 「君子は和して同ぜず」（子路篇）、「人知らずして慍みず」（学而篇）、「三十にして立つ」（為政篇）、「力足らざる者は中道にして廃す。今女は画れり」（雍也篇）、三年の喪（陽貨篇）
+- 兼好: 第93段「人、死を憎まば、生を愛すべし」、第150段（上手に交じれ）、第137段（恋のくだり）
+- マルクス・アウレリウス: 『自省録』5巻1（起きたくない朝）・4巻24（必要なことだけ）・7巻8（未来に乱されるな）
+- カーネギー: 名言が人間関係のものばかり。『道は開ける』の「今日一日の区切りで生きる」。q4（仕返しをしない）に当たる概念が無い
+- エピクロス: 『ヴァチカン箴言集』55（過ぎた善いことを感謝して思い出す）
+- ブッダ: 「二本目の矢」（『相応部』36.6）を概念か名言に
+- モンテーニュ: 「店の奥の部屋」（1巻39章）・「気をそらす」（3巻4章）・「欲望は困難によって増す」（2巻15章）
+- スピノザ: 「希望と恐れ」（『エチカ』3部 感情の定義12・13）
+- パスカル: 「他人の頭の中の想像上の生活」（ブランシュヴィック版147）
+- ヴェイユ: 「学業の善用についての省察」（本当の注意の努力は決して失われない）。q2 は祈りと結びつき、ふつうの相談では使いにくい
+- キルケゴール: 「野の百合」の講話（比べる心配）。q4 は「死ねるような理念」を含み使いにくい
+- ユング: 名言 q1・q2・q4 が、ふつうの相談に合いにくい
+- エピクテトス: roles の説明に「父にはすべて譲れ」という伝統的な面がある旨を一言（『提要』30）
+- 道元: 典座の話の「苔」は茸と読む説もある（名簿は海藻）
 
 ## 後回し（設計書 1章）
 
@@ -66,7 +87,9 @@
 
 - マシュマロの公開回答は 92件（2026-10-14）。一覧は `https://marshmallow-qa.com/users/3745329/answers`（JSON。続きは `?before=<最後の updated_at>`、404 で終わり）、1件は `https://marshmallow-qa.com/messages/<uuid>`。取り込みは `npm run nunu:fetch`（印は上書きしない）
 - note（21本）と YouTube の再生リスト（27本、1.5〜3.9時間、自動字幕のみ）は、ほぼマシュマロ回答の再編集
-- oshilog.life も seiheki.net も DNS は Cloudflare
+- oshilog.life も seiheki.net も DNS は Cloudflare（oshilog.life がどちらのアカウントかは未確認）
 - workerd は互換日付 2026-10-13 までしか受け付けない（2026-10-14 時点）
 - Gemini API の規約（2026-10-14 に確認）: 18歳未満が使う・使いそうなアプリに使えない / 無料枠は送った内容を改善に使い、人が読むことがある / EEA・スイス・英国の利用者には有料枠だけ
 - 名言のうち、作業役が「記憶だけで、Web で確かめきれていない」と報告したもの: アリストテレス q2・q4、エピクテトス q3・q4、プラトン q4 の後半、サルトル q3、ボーヴォワール q3、カーネギーの章番号、親鸞 q2〜q4、道元 q1・q4、長明 q3（大福光寺本の字）。ユングの q3 は弱いので外した
+- Cloudflare（2026-10-14）: アカウントは2つ（Homutsuki@gmail.com's Account f3ee…、nnhr b1921f…）。Workers Builds は Node 24 が既定。自動で作る API トークンは D1 の権限を含まない
+- 指示文（system）は約14万バイト（約4.8万字。名簿38人分）

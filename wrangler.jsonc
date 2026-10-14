@@ -2,6 +2,8 @@
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	// Cloudflare のダッシュボードのワーカー名と同じにする（違うと Workers Builds が失敗する）
 	"name": "tetsumaro-nu",
+	// アカウント nnhr（手元の wrangler のコマンドが、もう一つのアカウントと迷わないように）
+	"account_id": "b1921f40cc673e291e3348515ab8fca4",
 	"compatibility_date": "2026-10-13",
 	"main": "./worker/index.ts",
 	"workers_dev": true,
