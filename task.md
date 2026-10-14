@@ -24,7 +24,7 @@
 
 - **Gemini は有料枠か**（おすすめ: 公開するまでに有料枠）。有料枠ならプライバシーポリシー（src/pages/Privacy.tsx）の「無料枠を使っているため…」を書き換える
   - 有料枠の目安（2026-10-14 の料金表からの概算）: 1相談 2〜8円。`AI_DAILY_LIMIT` 200 なら1日の上限は400〜1,600円ほど。本番でトークン数を測ったら見直す
-- **見本の相談46件を出してよいか**（文の確認）。気になるものは `scripts/curated/answers/<id>.jsonl` を直すか、cases.json から外して build し直す
+- **見本の相談46件を出してよいか**（文の確認）。とくに AIぬぬはらの「自分の話」は、手本に本人の言葉があるものだけ残した（rel-unforgivable・rel-oshi・health-tears・health-sleep・life-meaning）。気になるものは `scripts/curated/answers/<id>.jsonl` を直すか、cases.json から外して build し直す
 - **oshilog.life の DNS がどちらのアカウントにあるか**（nnhr なら独自ドメインをつなげる。もう一つのアカウントなら相談）
 
 ## ぬぬはらの操作が要るもの
