@@ -28,7 +28,8 @@
 
 - **`npm run deploy` は実行しない**（本番のマイグレーションとデプロイが走る）。本番は GitHub に push すると Cloudflare の Workers Builds が出す
 - キー・合言葉はコミットしない。手元の値は `.dev.vars`（`.dev.vars.example` を写す）
-- AI は Gemini の無料枠だけ。1相談で呼ぶのは1回。キーが無くても偽の AI で動くこと（新機能もこれを保つ）
+- AI は Gemini だけ。1相談で呼ぶのは1回。キーが無くても偽の AI で動くこと（新機能もこれを保つ）
+- 対象は18歳以上（Gemini API の規約）。無料枠では相談文が Google に読まれうるので、規約・入力欄の注意書きを消さない
 - 名言の本文は名簿から差し込む。AI が書いた文を名言として出さない
 - 哲学者の思想はゆがめずに書く。死や苦しみを扱う思想には「思想の紹介で、死を勧めるものではありません」と添える
 - 5人未満の集計は出さない
@@ -41,9 +42,10 @@
 | --- | --- |
 | 開発サーバー | `npm run dev`（http://localhost:5183） |
 | テスト / 型 / ビルド | `npm test` / `npm run typecheck` / `npm run build` |
-| E2E（偽の AI。端末の Chrome を使う） | `npm run e2e` |
+| E2E（偽の AI。端末の Chrome を使う。開発サーバーを止めてから） | `npm run e2e` |
 | 手元の DB を作る | `npm run db:local` |
 | マシュマロ回答の取り込み | `npm run nunu:fetch` |
 | 回答の質を確かめる（開発サーバーに本物のキーを入れて） | `npm run eval` |
+| 絵を一覧の画像にする | `node scripts/portrait-sheet.mjs [id ...]`（test-results/portraits.png） |
 
 Windows の既定ターミナルは PowerShell。bash の heredoc は Bash ツールでだけ使う。
