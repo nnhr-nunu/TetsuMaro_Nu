@@ -6,9 +6,12 @@
  */
 @theme {
 	--font-sans: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+	--font-display: "DM Serif Display", Georgia, serif;
 	--color-ink: #1e1b3a;
 	--color-ink-soft: #4a4766;
 	--color-paper: #fbf8f3;
+	--color-line: #e7e1d8;
+	--color-mist: #f3eee6;
 	--color-brand: #3b4fe0;
 	--color-brand-link: #2f3fbf;
 	--color-brand-soft: #eef0fd;
@@ -27,7 +30,13 @@
 		overflow-wrap: anywhere;
 		/* 見出しや短い文で、最後の行に1文字だけ落ちないようにする */
 		text-wrap: pretty;
-		/* 日本語を文節で折り返す（対応するブラウザだけ） */
+	}
+
+	/* 見出しと短い一言は、日本語を文節で折り返す（対応するブラウザだけ）。長い本文に当てると行の右がでこぼこになるので当てない */
+	h1,
+	h2,
+	h3,
+	.phrase {
 		word-break: auto-phrase;
 	}
 
@@ -36,6 +45,7 @@
 	}
 
 	[id] {
-		scroll-margin-top: 1rem;
+		/* 上に貼り付くヘッダー（スマホでは2段）に隠れないように */
+		scroll-margin-top: 6.5rem;
 	}
 }

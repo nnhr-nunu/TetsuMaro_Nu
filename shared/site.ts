@@ -31,9 +31,12 @@ export const MIN_PHILOSOPHY = 5;
 /** 一般向けと大人向け（大人向けは後で seiheki.net の下に開く。今は general だけ） */
 export type Mode = "general" | "adult";
 
-/** 任意で聞く年代・性別（集計にだけ使う。ほかの人には見せない） */
+/**
+ * 任意で聞く年代・性別（集計にだけ使う。ほかの人には見せない）。
+ * 18歳未満は使えない（Gemini API の規約: 18歳未満が使う・使いそうなアプリに使わない）ので、10代は「18〜19歳」
+ */
 export const AGE_BANDS = [
-	{ id: "10s", label: "10代" },
+	{ id: "10s", label: "18〜19歳" },
 	{ id: "20s", label: "20代" },
 	{ id: "30s", label: "30代" },
 	{ id: "40s", label: "40代" },
