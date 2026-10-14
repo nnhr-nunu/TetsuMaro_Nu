@@ -44,18 +44,26 @@ export function ConsultationPage() {
 	const [hearted, setHearted] = useState(heartedSet);
 	const [similar, setSimilar] = useState<SharedItem[]>([]);
 
-	const load = useCallback(
-		() =>
-			getJson<ConsultationView>(`/api/consultations/${id}`)
-				.then((v) => {
-					setView(v);
-					setMissing(false);
-				})
-				.catch((err) => {
-					if (err instanceof ApiError && err.status === 404) setMissing(true);
-				}),
-		[id],
-	);
+	/**
+	 * 保存された中身を読み直す。読めたら true。通信の失敗（404 以外）は少し待って2回までやり直す
+	 * （回答が流れ終わった直後の読み直しが、たまに失敗するため。失敗したままなら、届いた回答の表示を残す）
+	 */
+	const load = useCallback(async (): Promise<boolean> => {
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				setView(await getJson<ConsultationView>(`/api/consultations/${id}`));
+				setMissing(false);
+				return true;
+			} catch (err) {
+				if (err instanceof ApiError && err.status === 404) {
+					setMissing(true);
+					return false;
+				}
+				await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+			}
+		}
+		return false;
+	}, [id]);
 
 	useEffect(() => {
 		void load();
@@ -128,8 +136,9 @@ export function ConsultationPage() {
 				if (ev.type === "answer") setMore((m) => ({ ...m, answers: [...m.answers, ev] }));
 				if (ev.type === "error") setMore((m) => ({ ...m, error: errorText(ev.code) }));
 			}
-			await load();
-			setMore((m) => ({ ...m, answers: [], busy: false }));
+			const loaded = await load();
+			// 読み直せたら、届いた分は保存された中身に入っている。読み直せなかったら、届いた分をそのまま見せ続ける
+			setMore((m) => ({ ...m, answers: loaded ? [] : m.answers, busy: false }));
 		} catch (err) {
 			setMore((m) => ({ ...m, busy: false, error: errorText(err) }));
 		}
