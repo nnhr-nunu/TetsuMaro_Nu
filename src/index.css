@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/*
+ * サイトの色。哲学者ごとの色（shared/philosophers の color）は、カードや比べ表でその場で当てる
+ * - ink: 文字（濃い紺） / paper: 背景（温かい白） / brand: 主ボタン・リンク（深い青）
+ */
+@theme {
+	--font-sans: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+	--color-ink: #1e1b3a;
+	--color-ink-soft: #4a4766;
+	--color-paper: #fbf8f3;
+	--color-brand: #3b4fe0;
+	--color-brand-link: #2f3fbf;
+	--color-brand-soft: #eef0fd;
+	--color-brand-line: #c9cff7;
+}
+
+@layer base {
+	/* 背景と文字の色を自分で決める。決めないと、端末やアプリ内ブラウザの既定の色に左右される */
+	html {
+		color-scheme: light;
+		background-color: var(--color-paper);
+		color: var(--color-ink);
+		accent-color: var(--color-brand);
+		-webkit-tap-highlight-color: transparent;
+		/* 利用者が書いた長い URL や英数字の連続で、ページが横にはみ出さないようにする */
+		overflow-wrap: anywhere;
+		/* 見出しや短い文で、最後の行に1文字だけ落ちないようにする */
+		text-wrap: pretty;
+		/* 日本語を文節で折り返す（対応するブラウザだけ） */
+		word-break: auto-phrase;
+	}
+
+	button:not(:disabled) {
+		cursor: pointer;
+	}
+
+	[id] {
+		scroll-margin-top: 1rem;
+	}
+}

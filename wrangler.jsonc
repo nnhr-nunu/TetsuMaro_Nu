@@ -1,0 +1,36 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	// Cloudflare のダッシュボードのワーカー名と同じにする（違うと Workers Builds が失敗する）
+	"name": "tetsumaro",
+	"compatibility_date": "2026-10-13",
+	"main": "./worker/index.ts",
+	"workers_dev": true,
+	"assets": {
+		"binding": "ASSETS",
+		// ファイルの無い URL は Worker が受ける。画面のパスなら index.html を、どれでもなければ 404 を返す（worker/pages.ts）。
+		// SPA のフォールバックにすると、存在しない URL もトップと同じ中身の 200 になる（ソフト 404）
+		"not_found_handling": "none",
+		// 相談・哲学者・テーマのページは、リンクカード（OGP）の題名を書き換えるために Worker が先に受ける（worker/pages.ts）
+		"run_worker_first": ["/", "/api/*", "/c/*", "/philosophers", "/philosophers/*", "/theme/*", "/robots.txt", "/sitemap.xml"]
+	},
+	// 連投の歯止め（worker/limits.ts）。namespace_id は性癖カルテ（1001〜1005）と重ねない
+	"ratelimits": [
+		// 相談を送る・ほかの哲学者にも聞く（Gemini を呼ぶ）。回線ごとに1分3回
+		{ "name": "CONSULT_LIMIT", "namespace_id": "2001", "simple": { "limit": 3, "period": 60 } },
+		{ "name": "WRITE_LIMIT", "namespace_id": "2002", "simple": { "limit": 60, "period": 60 } },
+		{ "name": "READ_LIMIT", "namespace_id": "2003", "simple": { "limit": 300, "period": 60 } },
+		{ "name": "REPORT_LIMIT", "namespace_id": "2004", "simple": { "limit": 5, "period": 60 } },
+		{ "name": "SEARCH_LIMIT", "namespace_id": "2005", "simple": { "limit": 20, "period": 60 } }
+	],
+	// エラーのログを残す（無料プランでも1日20万件まで）
+	"observability": { "enabled": true },
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "tetsumaro",
+			// Cloudflare で D1 を作ったら差し替える（task.md の「ぬぬはらの操作が要るもの」）
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations"
+		}
+	]
+}

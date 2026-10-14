@@ -1,0 +1,7 @@
+# 手元で動かすときの値（このファイルを .dev.vars に写して使う。.dev.vars は git に入れない）
+# Gemini のキー。空なら偽の AI が決まった回答を返す
+GEMINI_API_KEY=
+# 1 にすると、キーがあっても偽の AI を使う
+AI_FAKE=
+# 管理画面の合言葉。空なら管理用の API はすべて 404
+ADMIN_TOKEN=
