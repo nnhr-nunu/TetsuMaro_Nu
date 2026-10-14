@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+<rect width="200" height="220" fill="#E8EFE5"/>
+<circle cx="100" cy="100" r="78" fill="#F3F7F2"/>
+<polygon points="30,220 46,160 100,146 98,220" fill="#4E4D58"/>
+<polygon points="98,220 100,146 154,160 170,220" fill="#3B3A44"/>
+<polygon points="86,142 114,142 100,170" fill="#8AB17D"/>
+<polygon points="86,142 91,141 102,162 99,168" fill="#34333C"/>
+<polygon points="109,141 115,143 82,204 77,200" fill="#2C2B33"/>
+<polygon points="88,118 112,118 110,146 90,146" fill="#E4B08A"/>
+<polygon points="71,86 64,87 63,99 68,106 72,104" fill="#F2C6A2"/>
+<polygon points="129,86 136,87 137,99 132,106 128,104" fill="#DDA47E"/>
+<polygon points="70,84 72,66 84,52 100,48 100,128 74,112" fill="#F6CFAE"/>
+<polygon points="100,48 116,52 128,66 130,84 126,112 100,128" fill="#E8B48E"/>
+<polygon points="84,55 97,50 98,58 86,62" fill="#FADFC8"/>
+<polygon points="79,87 85,84 93,86 93,89 85,87 79,90" fill="#5A4A44"/>
+<polygon points="107,86 115,84 121,87 121,90 115,87 107,89" fill="#5A4A44"/>
+<rect x="85.5" y="95" width="7" height="3" rx="1" fill="#2E2A3D"/>
+<rect x="110.5" y="95" width="7" height="3" rx="1" fill="#2E2A3D"/>
+<polygon points="100,97 106,108 98,110" fill="#D99E78"/>
+<polygon points="100,162 134,158 138,208 104,212" fill="#FBF8F1"/>
+<polygon points="130,158.5 134,158 138,208 134,208.5" fill="#E6E1D6"/>
+<polygon points="125,166 127,166 128,194 126,194" fill="#8C8894"/>
+<polygon points="118,167 120,167 121,202 119,202" fill="#8C8894"/>
+<polygon points="111,168 113,168 113.5,186 111.5,186" fill="#8C8894"/>
+<polygon points="146,170 156,164 170,220 132,220 138,194" fill="#45444F"/>
+<polygon points="130,178 142,172 148,184 140,194 131,190" fill="#E8B48E"/>
+<polygon points="76,151 80,149 98,186 94,188" fill="#8AB17D"/>
+<polygon points="78.5,150 80,149 98,186 96.5,187" fill="#6E8E64"/>
+<polygon points="92.5,187.5 99,184.5 104,200" fill="#2E2A3D"/>
+<polygon points="30,220 42,186 80,174 88,188 66,220" fill="#5A5964"/>
+<polygon points="80,170 90,163 96,173 92,183 82,181" fill="#F6CFAE"/>
+<circle cx="160" cy="46" r="4.5" fill="#F4B9C4"/>
+<circle cx="165.7" cy="50.1" r="4.5" fill="#F4B9C4"/>
+<circle cx="163.5" cy="56.9" r="4.5" fill="#EBA3B1"/>
+<circle cx="156.5" cy="56.9" r="4.5" fill="#EBA3B1"/>
+<circle cx="154.3" cy="50.1" r="4.5" fill="#F4B9C4"/>
+<circle cx="160" cy="52" r="2.2" fill="#E8B64C"/>
+</svg>

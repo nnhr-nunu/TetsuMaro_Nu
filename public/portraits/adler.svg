@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+<rect width="200" height="220" fill="#FFE9DB"/>
+<circle cx="100" cy="100" r="78" fill="#FFF4ED"/>
+<polygon points="30,220 46,160 100,146 98,220" fill="#5B5450"/>
+<polygon points="98,220 100,146 154,160 170,220" fill="#46403D"/>
+<polygon points="84,146 100,176 116,146 100,140" fill="#FFFFFF"/>
+<polygon points="76,152 84,146 100,180 92,192" fill="#6A625E"/>
+<polygon points="124,152 116,146 100,180 108,192" fill="#544D49"/>
+<polygon points="88,146 100,151 100,155 88,160" fill="#FF924C"/>
+<polygon points="112,146 100,151 100,155 112,160" fill="#E07834"/>
+<rect x="96.5" y="149" width="7" height="8" rx="1.5" fill="#CC753D"/>
+<polygon points="88,120 112,120 110,146 90,146" fill="#E4B08A"/>
+<polygon points="68,86 76,64 100,58 100,130 80,124 70,108" fill="#F6CFAE"/>
+<polygon points="100,58 124,64 132,86 130,108 120,124 100,130" fill="#E8B48E"/>
+<polygon points="67,90 68,68 80,54 100,50 100,58 88,60 78,66 73,80 72,92" fill="#5A463C"/>
+<polygon points="100,50 120,54 132,68 133,90 128,92 127,80 122,66 112,60 100,58" fill="#46362E"/>
+<polygon points="86,62 100,58 100,66 90,68" fill="#FADFC8"/>
+<polygon points="78,86 92,84 92,87 78,89" fill="#3E302A"/>
+<polygon points="108,84 122,86 122,89 108,87" fill="#3E302A"/>
+<rect x="84.5" y="93" width="7" height="3" rx="1" fill="#2E2A3D"/>
+<rect x="108.5" y="93" width="7" height="3" rx="1" fill="#2E2A3D"/>
+<polygon points="100,95 106,106 98,108" fill="#D99E78"/>
+<polygon points="82,116 92,109 100,111 100,117 90,118" fill="#5A463C"/>
+<polygon points="100,111 108,109 118,116 110,118 100,117" fill="#46362E"/>
+<polygon points="132,214 140,190 162,176 168,190 150,206 144,220 128,220" fill="#5F5753"/>
+<polygon points="162,176 168,190 172,189 167,175" fill="#FFFFFF"/>
+<polygon points="166,173 172,190 184,190 195,184 192,177 180,172" fill="#F6CFAE"/>
+<polygon points="172,190 184,190 195,184 194,188 184,194 172,194" fill="#E2A982"/>
+<polygon points="174,174 177,167 181,167 182,173" fill="#F6CFAE"/>
+</svg>
