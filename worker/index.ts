@@ -1,6 +1,8 @@
 import { Hono } from "hono";
+import { crawl } from "./crawl";
 import type { AppEnv } from "./env";
 import { rateLimit } from "./limits";
+import { pages } from "./pages";
 import { admin } from "./routes/admin";
 import { consult } from "./routes/consult";
 import { consultations } from "./routes/consultations";
@@ -28,7 +30,8 @@ app.route("/api/reports", reports);
 app.route("/api/admin", admin);
 app.all("/api/*", (c) => c.json({ error: "not_found" }, 404));
 
-// 画面のパスは静的アセット（index.html）に任せる。OGP の書き換えと 404 は worker/pages.ts（Task 11）
-app.get("*", (c) => c.env.ASSETS.fetch(c.req.raw));
+app.route("/", crawl);
+// 画面のパスは index.html の題名・リンクカードを書き換えて返す。どれでもなければ 404（worker/pages.ts）
+app.route("/", pages);
 
 export default app;
