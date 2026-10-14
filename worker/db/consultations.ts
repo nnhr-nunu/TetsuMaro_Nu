@@ -19,6 +19,7 @@ export type ConsultationRow = {
 	my_answer: string | null;
 	my_picks: string;
 	hidden_at: number | null;
+	more_started_at: number | null;
 	model: string | null;
 	status: ConsultationStatus;
 };
@@ -85,6 +86,32 @@ export async function deleteConsultation(db: D1Database, id: string): Promise<vo
 		db.prepare("DELETE FROM shared_fts WHERE consultation_id = ?").bind(id),
 		db.prepare("DELETE FROM consultations WHERE id = ?").bind(id),
 	]);
+}
+
+/**
+ * 「ほかの哲学者にも聞く」を書いている途中の印（more_started_at）が付いたまま、この時間がたったら、落ちたものとして取り直せる。
+ * 書いている途中の印（STALE_PENDING_MS）と同じく、Gemini の1つのモデルの上限（2分）より長くする
+ */
+export const MORE_LOCK_MS = 3 * 60_000;
+
+/**
+ * 「ほかの哲学者にも聞く」の印を取る。取れたら true。
+ * ほかが書いている途中のとき、読んだあとに回答の数が変わった（直前に別の聞くが終わった）ときは取れない。
+ * 条件付きの UPDATE なので、同時に2回来ても1回だけ通る（slot が重なって上限を超えないように）
+ */
+export async function takeMore(db: D1Database, id: string, answered: number, now: number): Promise<boolean> {
+	const result = await db
+		.prepare(
+			"UPDATE consultations SET more_started_at = ? WHERE id = ? AND (more_started_at IS NULL OR more_started_at < ?) AND (SELECT COUNT(*) FROM answers WHERE consultation_id = ?) = ?",
+		)
+		.bind(now, id, now - MORE_LOCK_MS, id, answered)
+		.run();
+	return result.meta.changes > 0;
+}
+
+/** 取った印を外す。取り直された（時間がたって別の人が取った）印は外さない */
+export async function releaseMore(db: D1Database, id: string, startedAt: number): Promise<void> {
+	await db.prepare("UPDATE consultations SET more_started_at = NULL WHERE id = ? AND more_started_at = ?").bind(id, startedAt).run();
 }
 
 /**

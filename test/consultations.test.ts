@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { ConsultationView, StreamEvent } from "../shared/api";
 import { ANSWER_COUNT, MORE_COUNT } from "../shared/site";
+import { MORE_LOCK_MS } from "../worker/db/consultations";
 import app from "../worker/index";
 
 async function consultAs(body: string, cookie?: string): Promise<{ id: string; cookie: string }> {
@@ -121,6 +122,66 @@ describe("相談のページの API", () => {
 		const view = (await (await call("GET", `/api/consultations/${id}`, { cookie })).json()) as ConsultationView;
 		expect(view.answers).toHaveLength(ANSWER_COUNT + MORE_COUNT);
 		expect(new Set(view.answers.map((a) => a.philosopher)).size).toBe(ANSWER_COUNT + MORE_COUNT);
+	});
+
+	describe("ほかの哲学者にも聞く: 同時に2回", () => {
+		const more = (id: string, cookie: string, extra: Record<string, string> = {}) => {
+			const ctx = createExecutionContext();
+			return { res: app.request(`/api/consultations/${id}/more`, { method: "POST", headers: { Cookie: cookie } }, { ...env, ...extra }, ctx), ctx };
+		};
+		const answerCount = async (id: string) => (await env.DB.prepare("SELECT COUNT(*) AS n FROM answers WHERE consultation_id = ?").bind(id).first<{ n: number }>())?.n;
+		const lockOf = async (id: string) => (await env.DB.prepare("SELECT more_started_at AS t FROM consultations WHERE id = ?").bind(id).first<{ t: number | null }>())?.t;
+
+		it("同時に2回送っても1回だけ通り、もう1回は 409 で断る（人数が重ならず増えすぎない）", async () => {
+			const { id, cookie } = await consultAs("二重に押される");
+			const a = more(id, cookie);
+			const b = more(id, cookie);
+			const [ra, rb] = await Promise.all([a.res, b.res]);
+			const [ta, tb] = await Promise.all([ra.text(), rb.text()]);
+			await Promise.all([waitOnExecutionContext(a.ctx), waitOnExecutionContext(b.ctx)]);
+			expect([ra.status, rb.status].sort()).toEqual([200, 409]);
+			expect(JSON.parse(ra.status === 409 ? ta : tb)).toEqual({ error: "busy" });
+			expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT);
+			expect(await lockOf(id)).toBeNull();
+		});
+
+		it("書いている途中の印が付いていれば 409。何も書き足さない", async () => {
+			const { id, cookie } = await consultAs("書いている途中");
+			await env.DB.prepare("UPDATE consultations SET more_started_at = ? WHERE id = ?").bind(Date.now(), id).run();
+			const { res } = more(id, cookie);
+			const r = await res;
+			expect(r.status).toBe(409);
+			expect(await r.json()).toEqual({ error: "busy" });
+			expect(await answerCount(id)).toBe(ANSWER_COUNT);
+		});
+
+		it("途中で落ちて印が残っても、時間がたてば聞ける", async () => {
+			const { id, cookie } = await consultAs("印が残った");
+			await env.DB.prepare("UPDATE consultations SET more_started_at = ? WHERE id = ?").bind(Date.now() - MORE_LOCK_MS - 1000, id).run();
+			const { res, ctx } = more(id, cookie);
+			const r = await res;
+			await r.text();
+			await waitOnExecutionContext(ctx);
+			expect(r.status).toBe(200);
+			expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT);
+			expect(await lockOf(id)).toBeNull();
+		});
+
+		it("終われば印を外すので続けて聞ける。AI が失敗したときも外す", async () => {
+			const { id, cookie } = await consultAs("続けて聞く");
+			for (const n of [1, 2]) {
+				const { res, ctx } = more(id, cookie);
+				await (await res).text();
+				await waitOnExecutionContext(ctx);
+				expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT * n);
+			}
+			const failing = more(id, cookie, { AI_FAKE: "fail" });
+			const events = (await (await failing.res).text()).split("\n").filter(Boolean);
+			await waitOnExecutionContext(failing.ctx);
+			expect(JSON.parse(events.at(-1) ?? "{}")).toEqual({ type: "error", code: "ai_failed" });
+			expect(await lockOf(id)).toBeNull();
+			expect(await answerCount(id)).toBe(ANSWER_COUNT + MORE_COUNT * 2);
+		});
 	});
 
 	it("この端末の相談の一覧", async () => {

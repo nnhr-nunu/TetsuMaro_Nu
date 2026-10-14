@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { ConsultationView, ErrorCode } from "../../shared/api";
 import { philosopherById } from "../../shared/philosophers";
 import { ANSWER_COUNT, BODY_MAX, MORE_COUNT, MY_ANSWER_MAX, NAME_MAX } from "../../shared/site";
-import { type Loaded, deleteConsultation, loadConsultation, parseList, settleStale } from "../db/consultations";
+import { type Loaded, deleteConsultation, loadConsultation, parseList, releaseMore, settleStale, takeMore } from "../db/consultations";
 import { addHeart, heartCounts } from "../db/hearts";
 import { indexShared, unindexShared } from "../db/shared";
 import type { AppEnv } from "../env";
@@ -156,6 +156,9 @@ consultations.post("/:id/more", async (c) => {
 	if (loaded.row.status === "pending" || exclude.length === 0 || exclude.length >= MAX_ANSWERS) return badRequest(c);
 	const limited = await limitConsult(c);
 	if (limited) return limited;
+	// 同時に2回押されても1回だけ通す（slot が重なって、人数の上限を超えないように）。印は書き終えたら外す
+	const startedAt = Date.now();
+	if (!(await takeMore(c.env.DB, loaded.row.id, loaded.answers.length, startedAt))) return c.json({ error: "busy" satisfies ErrorCode }, 409);
 	return streamAnswers(c, {
 		id: loaded.row.id,
 		body: loaded.row.body,
@@ -164,5 +167,6 @@ consultations.post("/:id/more", async (c) => {
 		exclude,
 		related: [],
 		nunuExamples: [],
+		onEnd: () => releaseMore(c.env.DB, loaded.row.id, startedAt),
 	});
 });
