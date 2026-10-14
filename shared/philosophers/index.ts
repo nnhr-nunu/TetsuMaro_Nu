@@ -5,7 +5,7 @@ import type { Concept, Philosopher, Quote } from "./types";
 export type { Concept, Field, Group, Philosopher, Quote } from "./types";
 
 /** 名簿の38人の id。並びは設計書 3章の表（名簿のページ・指示文の順） */
-export const ROSTER_IDS = [
+export const ROSTER_IDS: readonly string[] = [
 	"socrates", "plato", "aristotle", "epicurus", "seneca", "epictetus", "marcus-aurelius",
 	"buddha", "confucius", "laozi", "zhuangzi", "wang-yangming",
 	"montaigne", "pascal", "spinoza", "kant", "schopenhauer", "mill", "kierkegaard", "nietzsche",
@@ -13,12 +13,12 @@ export const ROSTER_IDS = [
 	"kenko", "chomei", "shinran", "dogen", "nishida", "miki",
 	"adler", "freud", "jung",
 	"carnegie",
-] as const;
+];
 
 const ALL: Philosopher[] = [socrates, nietzsche];
 
 export const PHILOSOPHERS: readonly Philosopher[] = [...ALL].sort(
-	(a, b) => ROSTER_IDS.indexOf(a.id as (typeof ROSTER_IDS)[number]) - ROSTER_IDS.indexOf(b.id as (typeof ROSTER_IDS)[number]),
+	(a, b) => ROSTER_IDS.indexOf(a.id) - ROSTER_IDS.indexOf(b.id),
 );
 
 const BY_ID = new Map(PHILOSOPHERS.map((p) => [p.id, p]));
