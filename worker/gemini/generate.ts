@@ -21,7 +21,7 @@ export type GenerateOptions = Omit<StreamOptions, "model"> & {
 };
 
 /**
- * モデルを順に試して生成する。書き始める前の混雑・時間切れ・使えないモデルは次へ。全部のモデルで日の上限なら daily_limit、
+ * モデルを順に試して生成する。書き始める前の混雑・時間切れ・使えないモデル・1文字も書かなかったもの（安全のブロックなど）は次へ。全部のモデルで日の上限なら daily_limit、
  * キーが違うなら auth を投げる。書き始めたあとの失敗はそのまま投げる（届いた分は呼ぶ側が保存する）
  */
 export async function* generateText(opts: GenerateOptions): AsyncGenerator<string> {
@@ -44,7 +44,8 @@ export async function* generateText(opts: GenerateOptions): AsyncGenerator<strin
 			const e = err instanceof GeminiError ? err : new GeminiError("network", String(err));
 			if (e.kind === "auth") throw e;
 			if (e.kind === "daily_limit") daily++;
-			if (e.kind !== "bad_request") cooldown.set(model, Date.now() + COOLDOWN_MS);
+			// 使えないモデル・安全のブロックで空だったモデルは、混んでいるわけではないので後回しにしない
+			if (e.kind !== "bad_request" && e.kind !== "empty") cooldown.set(model, Date.now() + COOLDOWN_MS);
 			console.warn(`Gemini ${model} を諦めて次へ: ${e.kind} ${e.message}`);
 			last = e;
 			if (opts.signal?.aborted) break;

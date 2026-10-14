@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GeminiError, streamGemini } from "../worker/gemini/client";
 import { clearCooldown, generateText } from "../worker/gemini/generate";
 import { GEMINI_MODELS } from "../worker/gemini/models";
@@ -7,6 +7,11 @@ import { GEMINI_MODELS } from "../worker/gemini/models";
 function sse(...texts: string[]): Response {
 	const body = texts.map((t) => `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: t }] } }] })}\r\n\r\n`).join("");
 	return new Response(body, { status: 200, headers: { "Content-Type": "text/event-stream" } });
+}
+/** 200 で1文字も書かない応答（安全のブロックなど）。finishReason・blockReason だけが届く */
+function sseEmpty(why: { finishReason?: string; blockReason?: string }): Response {
+	const json = { candidates: why.finishReason ? [{ finishReason: why.finishReason }] : undefined, promptFeedback: why.blockReason ? { blockReason: why.blockReason } : undefined };
+	return new Response(`data: ${JSON.stringify(json)}\r\n\r\n`, { status: 200, headers: { "Content-Type": "text/event-stream" } });
 }
 const error = (status: number, message: string) => new Response(JSON.stringify({ error: { code: status, message } }), { status });
 const DAILY = "Quota exceeded for quota metric 'generate_content_free_tier_requests', quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier";
@@ -77,5 +82,50 @@ describe("generateText", () => {
 		asked.length = 0;
 		await collect(generateText({ ...base, fetch: fetchImpl }));
 		expect(asked[0]).toBe(GEMINI_MODELS[1]);
+	});
+});
+
+describe("200 で1文字も書かなかったとき（安全のブロックなど）", () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	/** gemini_empty のログ（console.log の JSON） */
+	const emptyLogs = (log: { mock: { calls: unknown[][] } }) =>
+		log.mock.calls.map((c) => String(c[0])).filter((s) => s.includes("gemini_empty")).map((s) => JSON.parse(s) as Record<string, unknown>);
+
+	it("streamGemini は理由（finishReason・blockReason）をログに出して empty を投げる", async () => {
+		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		const kind = async (res: Response) => {
+			try {
+				await collect(streamGemini({ ...base, model: "m", fetch: async () => res }));
+			} catch (e) {
+				return (e as GeminiError).kind;
+			}
+		};
+		expect(await kind(sseEmpty({ finishReason: "SAFETY" }))).toBe("empty");
+		expect(await kind(sseEmpty({ blockReason: "PROHIBITED_CONTENT" }))).toBe("empty");
+		expect(emptyLogs(log)).toEqual([
+			{ event: "gemini_empty", model: "m", finishReason: "SAFETY", blockReason: null },
+			{ event: "gemini_empty", model: "m", finishReason: null, blockReason: "PROHIBITED_CONTENT" },
+		]);
+	});
+
+	it("generateText は次のモデルへ移る。空だったモデルは後回しにしない", async () => {
+		vi.spyOn(console, "log").mockImplementation(() => {});
+		const asked: string[] = [];
+		const fetchImpl = async (url: RequestInfo | URL) => {
+			const model = String(url).match(/models\/([^:]+):/)?.[1] ?? "";
+			asked.push(model);
+			return model === GEMINI_MODELS[0] ? sseEmpty({ finishReason: "SAFETY" }) : sse("答え");
+		};
+		expect(await collect(generateText({ ...base, fetch: fetchImpl }))).toBe("答え");
+		expect(asked.slice(0, 2)).toEqual([GEMINI_MODELS[0], GEMINI_MODELS[1]]);
+		asked.length = 0;
+		await collect(generateText({ ...base, fetch: fetchImpl }));
+		expect(asked[0]).toBe(GEMINI_MODELS[0]);
+	});
+
+	it("どのモデルでも空なら empty を投げる", async () => {
+		vi.spyOn(console, "log").mockImplementation(() => {});
+		await expect(collect(generateText({ ...base, fetch: async () => sseEmpty({ finishReason: "SAFETY" }) }))).rejects.toMatchObject({ kind: "empty" });
 	});
 });
