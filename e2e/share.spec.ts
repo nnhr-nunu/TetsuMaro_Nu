@@ -20,7 +20,7 @@ test("共有すると別の人が見られ、刺さったを押せて、みん�
 
 	// みんなの相談の検索で見つかる
 	await viewer.goto(`/search?q=${encodeURIComponent("人の目")}`);
-	await expect(viewer.getByRole("link", { name: /人の目が気になって/ })).toBeVisible();
+	await expect(viewer.getByRole("link", { name: /人の目が気になって自分の意見/ })).toBeVisible();
 
 	// 持ち主が共有をやめると、別の人には見えない
 	await page.getByRole("button", { name: "共有をやめる" }).click();
