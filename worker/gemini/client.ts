@@ -24,6 +24,8 @@ export type StreamOptions = {
 	signal?: AbortSignal;
 	/** テストで差し替える */
 	fetch?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+	/** 使ったトークン数（入力・出力）が届くたびに呼ぶ。最後に届いたものがその回の合計 */
+	onUsage?: (usage: { prompt: number; output: number }) => void;
 };
 
 function classify(status: number, text: string): GeminiError {
@@ -33,10 +35,17 @@ function classify(status: number, text: string): GeminiError {
 	return new GeminiError("busy", `${status} ${text.slice(0, 300)}`);
 }
 
-/** SSE の1つの data から、思考でない部分の文字を取り出す */
-function textOf(data: string): string {
+type Chunk = {
+	candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[];
+	usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
+};
+
+/** SSE の1つの data から、思考でない部分の文字を取り出す。使ったトークン数があれば onUsage に渡す */
+function textOf(data: string, onUsage?: StreamOptions["onUsage"]): string {
 	try {
-		const json = JSON.parse(data) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+		const json = JSON.parse(data) as Chunk;
+		const u = json.usageMetadata;
+		if (u && onUsage) onUsage({ prompt: u.promptTokenCount ?? 0, output: (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0) });
 		return (json.candidates?.[0]?.content?.parts ?? [])
 			.filter((p) => !p.thought && typeof p.text === "string")
 			.map((p) => p.text)
@@ -95,7 +104,7 @@ export async function* streamGemini(opts: StreamOptions): AsyncGenerator<string>
 				buffer = buffer.slice(end + 2);
 				for (const line of event.split("\n")) {
 					if (!line.startsWith("data:")) continue;
-					const text = textOf(line.slice(5).trim());
+					const text = textOf(line.slice(5).trim(), opts.onUsage);
 					if (!text) continue;
 					if (!started) {
 						started = true;
@@ -108,7 +117,7 @@ export async function* streamGemini(opts: StreamOptions): AsyncGenerator<string>
 		}
 		const rest = buffer.trim();
 		if (rest.startsWith("data:")) {
-			const text = textOf(rest.slice(5).trim());
+			const text = textOf(rest.slice(5).trim(), opts.onUsage);
 			if (text) yield text;
 		}
 	} finally {

@@ -28,6 +28,13 @@ describe("streamGemini", () => {
 		expect(await collect(streamGemini({ ...base, model: "m", fetch: fetchImpl }))).toBe("こんにちは");
 	});
 
+	it("使ったトークン数（usageMetadata）を知らせる", async () => {
+		const usage = `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: "答え" }] } }], usageMetadata: { promptTokenCount: 1200, candidatesTokenCount: 340 } })}\n\n`;
+		const seen: { prompt: number; output: number }[] = [];
+		await collect(streamGemini({ ...base, model: "m", fetch: async () => new Response(usage, { status: 200 }), onUsage: (u) => seen.push(u) }));
+		expect(seen.at(-1)).toEqual({ prompt: 1200, output: 340 });
+	});
+
 	it("日の上限の 429 は daily_limit、それ以外の 429 と 503 は busy", async () => {
 		const kind = async (res: Response) => {
 			try {

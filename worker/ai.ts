@@ -8,6 +8,8 @@ export type AiRun = {
 	text: AsyncGenerator<string>;
 	/** 書き始めたモデルの名前（偽の AI は "fake"）。書き始める前は null */
 	model(): string | null;
+	/** 使ったトークン数（Gemini が知らせた最後の値）。偽の AI と、まだ届いていないときは null */
+	usage(): { prompt: number; output: number } | null;
 };
 
 /**
@@ -20,9 +22,10 @@ export function aiStream(
 	opts: { count: number; exclude: readonly string[]; mode: Mode; body: string; signal?: AbortSignal },
 ): AiRun {
 	if (!env.GEMINI_API_KEY || env.AI_FAKE) {
-		return { text: fakeAiStream({ ...opts, behavior: env.AI_FAKE || "1" }), model: () => "fake" };
+		return { text: fakeAiStream({ ...opts, behavior: env.AI_FAKE || "1" }), model: () => "fake", usage: () => null };
 	}
 	let used: string | null = null;
+	let usage: { prompt: number; output: number } | null = null;
 	const text = generateText({
 		apiKey: env.GEMINI_API_KEY,
 		system: prompt.system,
@@ -31,6 +34,9 @@ export function aiStream(
 		onModel: (m) => {
 			used = m;
 		},
+		onUsage: (u) => {
+			usage = u;
+		},
 	});
-	return { text, model: () => used };
+	return { text, model: () => used, usage: () => usage };
 }

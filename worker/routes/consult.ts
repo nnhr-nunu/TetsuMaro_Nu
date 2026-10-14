@@ -133,7 +133,11 @@ export function streamAnswers(
 		}
 
 		const model = run.model();
-		if (model && model !== "fake") await countAiCall(db, Date.now(), state.answered.length === 0).catch(() => {});
+		if (model && model !== "fake") {
+			await countAiCall(db, Date.now(), state.answered.length === 0).catch(() => {});
+			// 1回の相談で使ったトークン数（無料枠の1分あたりの上限に近いかを、ログ（observability）で見る）
+			console.log(JSON.stringify({ event: "gemini_usage", model, ...run.usage(), answered: state.answered.length, more: !first }));
+		}
 
 		if (state.answered.length === 0) {
 			if (first) await deleteConsultation(db, opts.id);
