@@ -13,5 +13,5 @@ export const btnSecondary =
 export const btnQuiet =
 	"inline-flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-line bg-white px-4 py-2 text-center text-ink-soft transition hover:bg-paper disabled:opacity-40";
 /** 一覧の行や絞り込みに添える小さな丸いボタン（選んでいるときは on を付ける） */
-export const chip = "inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-line bg-white px-3 text-sm text-ink-soft transition hover:border-ink";
-export const chipOn = "inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full border border-ink bg-ink px-3 text-sm font-bold text-white";
+export const chip = "inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-line bg-white px-3 text-sm text-ink-soft transition hover:border-ink";
+export const chipOn = "inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full border border-ink bg-ink px-3 text-sm font-bold text-white";

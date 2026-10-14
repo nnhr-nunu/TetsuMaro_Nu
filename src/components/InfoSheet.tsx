@@ -68,7 +68,7 @@ export function InfoSheetProvider({ children }: { children: ReactNode }) {
 }
 
 const chipClass =
-	"inline-flex items-center gap-1 rounded-full border border-current/20 bg-white/70 px-2.5 py-0.5 text-sm underline decoration-dotted underline-offset-4 hover:bg-white";
+	"inline-flex min-h-9 items-center gap-1 rounded-full border border-current/20 bg-white/70 px-3 py-1 text-sm underline decoration-dotted underline-offset-4 hover:bg-white";
 
 /** 押すと学派の説明が出る名前 */
 export function SchoolChip({ id, className = "" }: { id: string | null; className?: string }) {
