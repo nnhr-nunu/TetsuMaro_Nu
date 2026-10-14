@@ -1,7 +1,7 @@
 import type { AnswerEvent } from "../../shared/api";
 import { type Philosopher, quoteById } from "../../shared/philosophers";
 import { shade, tint } from "../colors";
-import { HeartButton } from "./HeartButton";
+import { HeartButton, type HeartProps } from "./HeartButton";
 import { ConceptChip, SchoolChip } from "./InfoSheet";
 import { Portrait } from "./Portrait";
 
@@ -17,7 +17,7 @@ export function AnswerCard({
 	answer: AnswerEvent;
 	philosopher: Philosopher;
 	index: number;
-	heart?: { on: boolean; count?: number; onClick: () => void; disabled?: boolean };
+	heart?: HeartProps;
 }) {
 	const quote = answer.quote ? quoteById(answer.quote) : undefined;
 	const field = FIELD_LABEL[p.field];

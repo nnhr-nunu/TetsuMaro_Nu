@@ -10,13 +10,15 @@ import { AnswerCard } from "../components/AnswerCard";
 import { CompareTable } from "../components/CompareTable";
 import { ConfirmButton } from "../components/ConfirmButton";
 import { CrisisBanner } from "../components/CrisisBanner";
+import type { HeartProps } from "../components/HeartButton";
 import { NunuSection } from "../components/NunuSection";
 import { MyAnswer, PickFaces, ReportForm, SharePanel } from "../components/OwnerPanels";
 import { Portrait } from "../components/Portrait";
 import { SharedList } from "../components/SharedList";
-import { heartedSet, loadDraft, rememberHeart, saveDraft } from "../draft";
+import { forgetHeart, heartedSet, loadDraft, rememberHeart, saveDraft } from "../draft";
 import { Icon } from "../icons";
 import { clearLiveIfDone, useLive } from "../liveConsult";
+import { sendOptimistic } from "../optimistic";
 import { useTitle } from "../useTitle";
 import { NotFound } from "./NotFound";
 
@@ -45,6 +47,7 @@ function ConsultationPage({ id }: { id: string }) {
 	const [missing, setMissing] = useState(false);
 	const [more, setMore] = useState<{ answers: AnswerEvent[]; busy: boolean; error: string | null }>({ answers: [], busy: false, error: null });
 	const [hearted, setHearted] = useState(heartedSet);
+	const [heartError, setHeartError] = useState<{ pid: string; text: string } | null>(null);
 	const [similar, setSimilar] = useState<SharedItem[]>([]);
 
 	/**
@@ -112,17 +115,27 @@ function ConsultationPage({ id }: { id: string }) {
 	/** 書き終わった相談だけ、自分の答え・共有・ほかの哲学者にも聞くを出す */
 	const settled = Boolean(view && view.status !== "pending" && !streaming);
 
-	const heartOf = (pid: string) => {
+	/** 押したのに送れなかったときは、押す前に戻して、そのカードの下に知らせる */
+	const heartOf = (pid: string): HeartProps | undefined => {
 		if (!view || streaming) return undefined;
+		const error = heartError?.pid === pid ? heartError.text : undefined;
+		const fail = (err: unknown) => setHeartError({ pid, text: errorText(err) });
 		if (isOwner) {
 			const on = view.myPicks.includes(pid);
 			return {
 				on,
 				count: view.hearts[pid],
+				error,
 				onClick: () => {
 					const myPicks = on ? view.myPicks.filter((p) => p !== pid) : [...view.myPicks, pid];
-					setView({ ...view, myPicks });
-					void sendJson("PATCH", `/api/consultations/${id}`, { myPicks }).catch(() => setView(view));
+					setHeartError(null);
+					void sendOptimistic(
+						() => setView({ ...view, myPicks }),
+						() => setView((v) => (v ? { ...v, myPicks: view.myPicks } : v)),
+						() => sendJson("PATCH", `/api/consultations/${id}`, { myPicks }),
+					).then((r) => {
+						if (!r.ok) fail(r.error);
+					});
 				},
 			};
 		}
@@ -132,12 +145,23 @@ function ConsultationPage({ id }: { id: string }) {
 			on,
 			count: view.hearts[pid],
 			disabled: on,
+			error,
 			onClick: () => {
-				rememberHeart(key);
-				setHearted(heartedSet());
-				void sendJson<{ count: number }>("POST", `/api/consultations/${id}/hearts`, { philosopherId: pid }).then((r) =>
-					setView((v) => (v ? { ...v, hearts: { ...v.hearts, [pid]: r.count } } : v)),
-				);
+				setHeartError(null);
+				void sendOptimistic(
+					() => {
+						rememberHeart(key);
+						setHearted(heartedSet());
+					},
+					() => {
+						forgetHeart(key);
+						setHearted(heartedSet());
+					},
+					() => sendJson<{ count: number }>("POST", `/api/consultations/${id}/hearts`, { philosopherId: pid }),
+				).then((r) => {
+					if (r.ok) setView((v) => (v ? { ...v, hearts: { ...v.hearts, [pid]: r.value.count } } : v));
+					else fail(r.error);
+				});
 			},
 		};
 	};

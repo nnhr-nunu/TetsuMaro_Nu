@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { NunuEvent } from "../../shared/api";
 import type { NunuAnswer } from "../../shared/nunu";
 import { Icon } from "../icons";
-import { HeartButton } from "./HeartButton";
+import { HeartButton, type HeartProps } from "./HeartButton";
 import { Logo } from "./Layout";
 
 const cut = (text: string, n: number) => ([...text].length > n ? `${[...text].slice(0, n).join("")}…` : text);
@@ -27,7 +27,7 @@ function useRelated(ids: string[]): NunuAnswer[] {
 }
 
 /** ぬぬはらの欄: AIぬぬはらの回答と、ぬぬはら本人の過去のマシュマロ回答 */
-export function NunuSection({ nunu, heart }: { nunu: NunuEvent; heart?: { on: boolean; count?: number; onClick: () => void } }) {
+export function NunuSection({ nunu, heart }: { nunu: NunuEvent; heart?: HeartProps }) {
 	const related = useRelated(nunu.related);
 	if (!nunu.body && related.length === 0) return null;
 	return (

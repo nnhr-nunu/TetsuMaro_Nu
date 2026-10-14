@@ -66,3 +66,13 @@ export function rememberHeart(key: string): void {
 		// 覚えられなくても、サーバーが同じ人の2回目を数えない
 	}
 }
+/** 送れなかった「刺さった」の印を消す（押す前の状態に戻して、もう一度押せるように） */
+export function forgetHeart(key: string): void {
+	try {
+		const s = heartedSet();
+		s.delete(key);
+		localStorage.setItem(HEARTS_KEY, JSON.stringify([...s].slice(-500)));
+	} catch {
+		// 消せなくても、画面は押す前に戻る。次に読み直すまでは押せない
+	}
+}
