@@ -5,6 +5,7 @@ import type { ConsultationView, StreamEvent } from "../shared/api";
 import { ANSWER_COUNT, MORE_COUNT } from "../shared/site";
 import { MORE_LOCK_MS } from "../worker/db/consultations";
 import app from "../worker/index";
+import { hashKey } from "../worker/owner";
 
 async function consultAs(body: string, cookie?: string): Promise<{ id: string; cookie: string }> {
 	const ctx = createExecutionContext();
@@ -122,6 +123,39 @@ describe("相談のページの API", () => {
 		const view = (await (await call("GET", `/api/consultations/${id}`, { cookie })).json()) as ConsultationView;
 		expect(view.answers).toHaveLength(ANSWER_COUNT + MORE_COUNT);
 		expect(new Set(view.answers.map((a) => a.philosopher)).size).toBe(ANSWER_COUNT + MORE_COUNT);
+	});
+
+	describe("ぬぬはらの欄が無い相談", () => {
+		/** 共有中の相談を直接作る（ぬぬはらの欄は withNunu のときだけ） */
+		async function seed(id: string, withNunu: boolean) {
+			const key = "n".repeat(43);
+			await env.DB.prepare("INSERT OR IGNORE INTO owners (id, key_hash, created_at) VALUES ('nunu-owner', ?, 1)").bind(await hashKey(key)).run();
+			await env.DB.prepare("INSERT INTO consultations (id, owner_id, body, created_at, shared_at, status) VALUES (?, 'nunu-owner', 'ぬぬはらの欄の有無', 1, 1, 'done')")
+				.bind(id)
+				.run();
+			await env.DB.prepare("INSERT INTO answers (consultation_id, philosopher_id, slot, conclusion, body) VALUES (?, 'socrates', 0, 'c', 'b')").bind(id).run();
+			if (withNunu) await env.DB.prepare("INSERT INTO nunu_answers (consultation_id, body, related) VALUES (?, 'b', '[]')").bind(id).run();
+			return `owner=${key}`;
+		}
+
+		it("相談者の「刺さった」にぬぬはらは選べない。哲学者は選べる", async () => {
+			const cookie = await seed("no-nunu-pick", false);
+			expect((await call("PATCH", "/api/consultations/no-nunu-pick", { cookie, body: { myPicks: ["socrates", "nunu"] } })).status).toBe(400);
+			expect((await call("PATCH", "/api/consultations/no-nunu-pick", { cookie, body: { myPicks: ["socrates"] } })).status).toBe(200);
+		});
+
+		it("見た人の「刺さった」にもぬぬはらは押せない", async () => {
+			await seed("no-nunu-heart", false);
+			const heart = (philosopherId: string) => call("POST", "/api/consultations/no-nunu-heart/hearts", { body: { philosopherId }, ip: "203.0.113.20" });
+			expect((await heart("nunu")).status).toBe(400);
+			expect((await heart("socrates")).status).toBe(200);
+		});
+
+		it("欄があれば、どちらもぬぬはらを選べる", async () => {
+			const cookie = await seed("with-nunu", true);
+			expect((await call("PATCH", "/api/consultations/with-nunu", { cookie, body: { myPicks: ["nunu"] } })).status).toBe(200);
+			expect((await call("POST", "/api/consultations/with-nunu/hearts", { body: { philosopherId: "nunu" }, ip: "203.0.113.21" })).status).toBe(200);
+		});
 	});
 
 	describe("ほかの哲学者にも聞く: 同時に2回", () => {

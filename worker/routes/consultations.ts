@@ -25,6 +25,9 @@ const badRequest = (c: Context<AppEnv>) => c.json({ error: "bad_request" satisfi
 
 const isPublic = (l: Loaded) => l.row.shared_at !== null && l.row.hidden_at === null;
 
+/** 「刺さった」に選べる id。答えた哲学者と、ぬぬはらの欄があるときだけぬぬはら */
+const pickable = (l: Loaded) => new Set([...l.answers.map((a) => a.philosopher), ...(l.nunu ? [NUNU_PICK] : [])]);
+
 function toView(l: Loaded, isOwner: boolean, hearts: Record<string, number>): ConsultationView {
 	const r = l.row;
 	return {
@@ -100,8 +103,8 @@ consultations.patch("/:id", async (c) => {
 		values.push(input.displayName?.trim() || null);
 	}
 	if (input.myPicks !== undefined) {
-		const answered = new Set([...loaded.answers.map((a) => a.philosopher), NUNU_PICK]);
-		if (!input.myPicks.every((p) => answered.has(p))) return badRequest(c);
+		const choices = pickable(loaded);
+		if (!input.myPicks.every((p) => choices.has(p))) return badRequest(c);
 		sets.push("my_picks = ?");
 		values.push(JSON.stringify([...new Set(input.myPicks)]));
 	}
@@ -143,8 +146,7 @@ consultations.post("/:id/hearts", async (c) => {
 	const loaded = await loadConsultation(c.env.DB, c.req.param("id"));
 	if (!loaded || !isPublic(loaded)) return notFound(c);
 	const input = await readBody(c, heartSchema);
-	const answered = new Set([...loaded.answers.map((a) => a.philosopher), NUNU_PICK]);
-	if (!input || !answered.has(input.philosopherId)) return badRequest(c);
+	if (!input || !pickable(loaded).has(input.philosopherId)) return badRequest(c);
 	const voter = await networkHash(c.env.REPORTER_KEY, c.req.header("cf-connecting-ip") ?? "local", `heart:${loaded.row.id}`);
 	return c.json({ count: await addHeart(c.env.DB, loaded.row.id, input.philosopherId, voter, Date.now()) });
 });
