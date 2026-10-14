@@ -14,6 +14,7 @@ import { GeminiError } from "../gemini/client";
 import { readBody } from "../http";
 import { newId } from "../ids";
 import { ensureOwner } from "../owner";
+import { requireTurnstile } from "../turnstile";
 
 export const consult = new Hono<AppEnv>();
 
@@ -34,6 +35,8 @@ consult.post("/", async (c) => {
 	if (!text) return c.json({ error: "empty" satisfies ErrorCode }, 400);
 	if (text.length > BODY_MAX) return c.json({ error: "too_long" satisfies ErrorCode }, 400);
 
+	const blocked = await requireTurnstile(c, input.turnstile, "consult");
+	if (blocked) return blocked;
 	const owner = await ensureOwner(c);
 	const now = Date.now();
 	if ((await countToday(c.env.DB, owner.id, now)) >= DAILY_PER_OWNER) return c.json({ error: "daily_owner_limit" satisfies ErrorCode }, 429);

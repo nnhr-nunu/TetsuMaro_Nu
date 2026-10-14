@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import type { AppEnv } from "./env";
+import { rateLimit } from "./limits";
+import { admin } from "./routes/admin";
 import { consult } from "./routes/consult";
 import { consultations } from "./routes/consultations";
 import { me } from "./routes/me";
+import { reports } from "./routes/reports";
 import { shared } from "./routes/shared";
 
 // strict: false で、末尾に / が付いた URL（外から貼られたリンク）も同じページにする
@@ -14,12 +17,15 @@ app.use("/api/*", async (c, next) => {
 	if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
 	c.header("X-Robots-Tag", "noindex");
 });
+app.use("/api/*", rateLimit);
 
 app.get("/api/health", (c) => c.json({ ok: true }));
 app.route("/api/consult", consult);
 app.route("/api/consultations", consultations);
 app.route("/api/me", me);
 app.route("/api/shared", shared);
+app.route("/api/reports", reports);
+app.route("/api/admin", admin);
 app.all("/api/*", (c) => c.json({ error: "not_found" }, 404));
 
 // 画面のパスは静的アセット（index.html）に任せる。OGP の書き換えと 404 は worker/pages.ts（Task 11）
