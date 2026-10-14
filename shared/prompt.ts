@@ -18,8 +18,9 @@ function rosterBlock(p: Philosopher, mode: Mode): string {
 		`- この人の考え方: ${p.oneLine}`,
 		`- 中心の考え: ${p.core}`,
 		`- 代表作: ${p.works.join("、")}`,
-		`- 概念: ${p.concepts.map((c) => `${c.id}「${c.name}」${c.desc}`).join(" / ")}`,
-		`- 名言: ${p.quotes.length ? p.quotes.map((q) => `${q.id}「${q.text}」（${q.source}）`).join(" / ") : "なし（quote は null）"}`,
+		// 概念の説明と名言の出典は入れない（画面は名簿から出す。指示文を短くして、無料枠の1分あたりの上限と待ち時間を抑える）
+		`- 概念: ${p.concepts.map((c) => `${c.id}「${c.name}」`).join(" / ")}`,
+		`- 名言: ${p.quotes.length ? p.quotes.map((q) => `${q.id}「${q.text}」`).join(" / ") : "なし（quote は null）"}`,
 		`- 言わせないこと: ${p.avoid.join(" / ")}`,
 		`- 語り口: ${p.voice}`,
 	];
